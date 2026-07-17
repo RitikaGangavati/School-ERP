@@ -28,6 +28,7 @@ export const DRAWER_WIDTH_COLLAPSED = 72;
 // Centralized menu config — add/remove items here only
 const menuItems = [
   { label: "Dashboard", path: "/dashboard", icon: <DashboardIcon /> },
+  { label: "Roles", path: "/roles", icon: <PeopleIcon /> },
   { label: "Students", path: "/students", icon: <PeopleIcon /> },
   { label: "Teachers", path: "/teachers", icon: <SchoolIcon /> },
   { label: "Classes", path: "/classes", icon: <ClassIcon /> },

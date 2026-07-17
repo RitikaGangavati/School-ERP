@@ -13,9 +13,17 @@ app.use(express.json());
 app.use(express.urlencoded({extended:true}));
 
 const authRT = require("./routes/authRT");
-
+const roleRT = require("./routes/roleRT");
+const userRT = require("./routes/userRT");
+const academicYearRT = require("./routes/academicYearRT");
+const sectionRT = require("./routes/sectionRT");
+const classRT = require("./routes/classRT");
 app.use('/api/auth',authRT);
-
+app.use('/api/roles',roleRT);
+app.use("/api/users", userRT);
+app.use("/api/academic-Years",academicYearRT);
+app.use("/api/sections",sectionRT);
+app.use("/api/classes", classRT);
 
 //Route test
 app.get("/", (req, res) => {

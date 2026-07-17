@@ -1,10 +1,7 @@
 import { useState } from "react";
 import { Box, Toolbar, useMediaQuery, useTheme } from "@mui/material";
 
-import Sidebar, {
-  DRAWER_WIDTH,
-  DRAWER_WIDTH_COLLAPSED,
-} from "./Sidebar";
+import Sidebar, { DRAWER_WIDTH, DRAWER_WIDTH_COLLAPSED } from "./Sidebar";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 
@@ -18,8 +15,8 @@ export default function MainLayout({ children }) {
   const currentDrawerWidth = isMobile
     ? 0
     : collapsed
-    ? DRAWER_WIDTH_COLLAPSED
-    : DRAWER_WIDTH;
+      ? DRAWER_WIDTH_COLLAPSED
+      : DRAWER_WIDTH;
 
   const handleMenuClick = () => {
     if (isMobile) {
@@ -48,6 +45,8 @@ export default function MainLayout({ children }) {
           display: "flex",
           flexDirection: "column",
           minHeight: "100vh",
+          minWidth: 0, // allow this flex child to shrink below its content's natural width
+          overflowX: "hidden", // prevent this container from ever scrolling horizontally
           width: { md: `calc(100% - ${currentDrawerWidth}px)` },
           transition: (theme) =>
             theme.transitions.create("width", {
@@ -63,6 +62,9 @@ export default function MainLayout({ children }) {
           sx={{
             flexGrow: 1,
             p: { xs: 2, sm: 3 },
+            bgcolor: "#f7f9fc",
+            minWidth: 0, // same fix, one level deeper
+            overflowX: "hidden",
           }}
         >
           {children}

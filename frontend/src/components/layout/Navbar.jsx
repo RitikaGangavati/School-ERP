@@ -145,7 +145,7 @@ export default function Navbar({ onMenuClick, drawerWidth }) {
                 {user ? `${user.firstName} ${user.lastName}` : "Guest User"}
               </Typography>
               <Typography variant="caption" color="text.secondary" noWrap>
-                {user?.email || ""}
+                {user?.role || ""}
               </Typography>
             </Box>
 
