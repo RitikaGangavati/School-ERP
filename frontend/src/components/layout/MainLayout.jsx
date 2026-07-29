@@ -1,22 +1,24 @@
-import { useState } from "react";
-import { Box, Toolbar, useMediaQuery, useTheme } from "@mui/material";
-
+import { useState, useEffect } from "react";
 import Sidebar, { DRAWER_WIDTH, DRAWER_WIDTH_COLLAPSED } from "./Sidebar";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 
 export default function MainLayout({ children }) {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const currentDrawerWidth = isMobile
     ? 0
     : collapsed
-      ? DRAWER_WIDTH_COLLAPSED
-      : DRAWER_WIDTH;
+    ? DRAWER_WIDTH_COLLAPSED
+    : DRAWER_WIDTH;
 
   const handleMenuClick = () => {
     if (isMobile) {
@@ -27,7 +29,7 @@ export default function MainLayout({ children }) {
   };
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh" }}>
+    <div className="d-flex" style={{ minHeight: "100vh" }}>
       <Navbar onMenuClick={handleMenuClick} drawerWidth={currentDrawerWidth} />
 
       <Sidebar
@@ -38,40 +40,23 @@ export default function MainLayout({ children }) {
         onToggleCollapse={() => setCollapsed((prev) => !prev)}
       />
 
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          display: "flex",
-          flexDirection: "column",
-          minHeight: "100vh",
-          minWidth: 0, // allow this flex child to shrink below its content's natural width
-          overflowX: "hidden", // prevent this container from ever scrolling horizontally
-          width: { md: `calc(100% - ${currentDrawerWidth}px)` },
-          transition: (theme) =>
-            theme.transitions.create("width", {
-              easing: theme.transitions.easing.sharp,
-              duration: theme.transitions.duration.enteringScreen,
-            }),
+      <div
+        className="d-flex flex-column flex-grow-1"
+        style={{
+          marginLeft: currentDrawerWidth,
+          minWidth: 0,
+          overflowX: "hidden",
+          transition: "margin-left 0.2s ease",
         }}
       >
-        {/* Spacer to offset the fixed Navbar height */}
-        <Toolbar />
+        <div style={{ height: 56 }} /> {/* Navbar spacer */}
 
-        <Box
-          sx={{
-            flexGrow: 1,
-            p: { xs: 2, sm: 3 },
-            bgcolor: "#f7f9fc",
-            minWidth: 0, // same fix, one level deeper
-            overflowX: "hidden",
-          }}
-        >
+        <div className="flex-grow-1 p-3 p-sm-4">
           {children}
-        </Box>
+        </div>
 
         <Footer />
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 }

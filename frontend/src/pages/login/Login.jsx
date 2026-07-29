@@ -1,23 +1,12 @@
 import { useState } from "react";
-import {
-  Box,
-  Paper,
-  Typography,
-  TextField,
-  Button,
-  Stack,
-  Alert,
-  CircularProgress,
-} from "@mui/material";
-
-import SchoolIcon from "@mui/icons-material/School";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import { Spinner } from "react-bootstrap";
 
-import PasswordField from "../../components/Common/PasswordField";
+import SchoolIcon from "@mui/icons-material/School";
+import PasswordField from "../../components/common/PasswordField";
 import { loginUser } from "../../services/authService";
 import { loginSuccess } from "../../redux/auth/authSlice";
-
 import LoginImage from "../../assets/login-image-1.png";
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -28,10 +17,9 @@ export default function Login() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
-  const [error, setError] = useState(""); // for server/network errors
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const validateFields = () => {
@@ -63,12 +51,9 @@ export default function Login() {
     setEmailError("");
     setPasswordError("");
 
-    if (!validateFields()) {
-      return;
-    }
+    if (!validateFields()) return;
 
     setLoading(true);
-
     try {
       const res = await loginUser({
         email: email.trim().toLowerCase(),
@@ -84,10 +69,9 @@ export default function Login() {
         loginSuccess({
           token: res.data.token,
           user: res.data.user,
-        }),
+        })
       );
       navigate("/dashboard");
-      
     } catch (err) {
       if (err.response) {
         const status = err.response.status;
@@ -115,118 +99,76 @@ export default function Login() {
   };
 
   return (
-    <Box sx={{ height: "100vh", display: "flex", bgcolor: "#fff" }}>
+    <div className="d-flex vh-100 bg-white">
       {/* Left Side - Image */}
-      <Box
-        sx={{
-          width: "55%",
-          display: { xs: "none", md: "flex" },
-          alignItems: "center",
-          justifyContent: "center",
-          bgcolor: "#fff",
-          p: 4,
-        }}
-      >
-        <Box
-          component="img"
+      <div className="d-none d-md-flex align-items-center justify-content-center p-4" style={{ width: "55%" }}>
+        <img
           src={LoginImage}
           alt="Login illustration"
-          sx={{
-            width: "100%",
-            maxWidth: 640,
-            height: "auto",
-            objectFit: "contain",
-          }}
+          className="img-fluid"
+          style={{ maxWidth: 640 }}
         />
-      </Box>
+      </div>
 
       {/* Right Side - Login Form */}
-      <Box
-        sx={{
-          width: { xs: "100%", md: "45%" },
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          bgcolor: "#fff",
-        }}
-      >
-        <Paper
-          elevation={4}
-          sx={{
-            width: "85%",
-            maxWidth: 420,
-            p: 5,
-            borderRadius: 4,
-            border: "1px solid",
-            borderColor: "grey.100",
-          }}
+      <div className="d-flex align-items-center justify-content-center flex-grow-1">
+        <div
+          className="shadow rounded-4 border p-5"
+          style={{ width: "85%", maxWidth: 420 }}
         >
-          <Stack spacing={3}>
-            <Box textAlign="center">
-              <SchoolIcon color="primary" sx={{ fontSize: 60 }} />
+          <div className="text-center mb-3">
+            <SchoolIcon color="primary" style={{ fontSize: 60 }} />
+            <h4 className="fw-bold mt-1">School ERP</h4>
+            <p className="text-muted">Sign in to continue</p>
+          </div>
 
-              <Typography variant="h4" fontWeight="bold">
-                School ERP
-              </Typography>
+          {error && <div className="alert alert-danger py-2">{error}</div>}
 
-              <Typography color="text.secondary">
-                Sign in to continue
-              </Typography>
-            </Box>
+          <form onSubmit={handleLogin}>
+            <div className="mb-3">
+              <label className="form-label">Email</label>
+              <input
+                type="text"
+                className={`form-control ${emailError ? "is-invalid" : ""}`}
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (emailError) setEmailError("");
+                }}
+                disabled={loading}
+              />
+              {emailError && <div className="invalid-feedback">{emailError}</div>}
+            </div>
 
-            {/* General/server-level errors only */}
-            {error && <Alert severity="error">{error}</Alert>}
+            <div className="mb-2">
+              <label className="form-label">Password</label>
+              <PasswordField
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (passwordError) setPasswordError("");
+                }}
+                error={passwordError}
+                disabled={loading}
+              />
+            </div>
 
-            <TextField
-              label="Email"
-              fullWidth
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                if (emailError) setEmailError("");
-              }}
-              error={!!emailError}
-              helperText={emailError}
-              disabled={loading}
-            />
+            <div className="text-end mb-3">
+              <span className="text-primary" style={{ cursor: "pointer", fontSize: "0.9rem" }}>
+                Forgot Password?
+              </span>
+            </div>
 
-            <PasswordField
-              label="Password"
-              fullWidth
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                if (passwordError) setPasswordError("");
-              }}
-              error={!!passwordError}
-              helperText={passwordError}
-              disabled={loading}
-            />
-
-            <Typography
-              align="right"
-              color="primary"
-              sx={{ cursor: "pointer" }}
-            >
-              Forgot Password?
-            </Typography>
-
-            <Button
-              variant="contained"
-              size="large"
-              fullWidth
-              onClick={handleLogin}
+            <button
+              type="submit"
+              className="btn btn-primary w-100 py-2"
               disabled={loading}
             >
-              {loading ? (
-                <CircularProgress size={24} color="inherit" />
-              ) : (
-                "Login"
-              )}
-            </Button>
-          </Stack>
-        </Paper>
-      </Box>
-    </Box>
+              {loading ? <Spinner size="sm" animation="border" /> : "Login"}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -1,21 +1,18 @@
-import { TextField, InputAdornment } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 
 export default function SearchBar({ value, onChange, placeholder = "Search..." }) {
   return (
-    <TextField
-      size="small"
-      placeholder={placeholder}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      sx={{ width: { xs: "100%", sm: 280 } }}
-      InputProps={{
-        startAdornment: (
-          <InputAdornment position="start">
-            <SearchIcon fontSize="small" />
-          </InputAdornment>
-        ),
-      }}
-    />
+    <div className="input-group" style={{ maxWidth: 280 }}>
+      <span className="input-group-text bg-white border-end-0">
+        <SearchIcon fontSize="small" />
+      </span>
+      <input
+        type="text"
+        className="form-control border-start-0"
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
   );
 }

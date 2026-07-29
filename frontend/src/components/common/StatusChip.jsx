@@ -1,12 +1,9 @@
-import { Chip } from "@mui/material";
+import { Badge } from "react-bootstrap";
 
 export default function StatusChip({ active }) {
   return (
-    <Chip
-      label={active ? "Active" : "Inactive"}
-      color={active ? "success" : "default"}
-      size="small"
-      variant={active ? "filled" : "outlined"}
-    />
+    <Badge bg={active ? "success" : "secondary"} pill>
+      {active ? "Active" : "Inactive"}
+    </Badge>
   );
 }

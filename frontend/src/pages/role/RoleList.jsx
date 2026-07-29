@@ -1,25 +1,16 @@
 import { useEffect, useState, useCallback } from "react";
-import {
-  Stack,
-  Typography,
-  Button,
-  IconButton,
-  Tooltip,
-  Alert,
-} from "@mui/material";
 
-import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/EditOutlined";
 import DeleteIcon from "@mui/icons-material/DeleteOutlineOutlined";
+import AddIcon from "@mui/icons-material/Add";
 
 import MainLayout from "../../components/layout/MainLayout";
 import ResponsiveDataList from "../../components/common/ResponsiveDataList";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import StatusChip from "../../components/common/StatusChip";
-import { useToast } from "../../components/common/ToastContext";
 import SearchBar from "../../components/common/SearchBar";
-import RoleForm from "./RoleForm";
-import AddButton from "../../components/common/AddButton";
+import RowActions from "../../components/common/RowActions";
+import { useToast } from "../../components/common/ToastContext";
 import {
   getRoles,
   createRole,
@@ -27,26 +18,23 @@ import {
   deleteRole,
 } from "../../services/roleService";
 
+const emptyForm = { roleName: "", description: "", active: true };
+
 export default function RoleList() {
+  const { showToast } = useToast();
+
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedRole, setSelectedRole] = useState(null);
+  const [form, setForm] = useState(emptyForm);
+  const [editingId, setEditingId] = useState(null);
+  const [nameError, setNameError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
-
-  const { showToast } = useToast();
-
-  const [searchTerm, setSearchTerm] = useState("");
-
-  const filteredRoles = roles.filter(
-    (role) =>
-      role.roleName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (role.description || "").toLowerCase().includes(searchTerm.toLowerCase()),
-  );
 
   const fetchRoles = useCallback(async () => {
     setLoading(true);
@@ -55,10 +43,7 @@ export default function RoleList() {
       const res = await getRoles();
       setRoles(res.data.roles || []);
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          "Unable to load roles. Please try again.",
-      );
+      setError(err.response?.data?.message || "Unable to load roles. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -68,23 +53,51 @@ export default function RoleList() {
     fetchRoles();
   }, [fetchRoles]);
 
-  const handleFormSubmit = async (formData) => {
+  const filteredRoles = roles.filter(
+    (role) =>
+      role.roleName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (role.description || "").toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const resetForm = () => {
+    setForm(emptyForm);
+    setEditingId(null);
+    setNameError("");
+  };
+
+  const handleEditClick = (row) => {
+    setForm({
+      roleName: row.roleName,
+      description: row.description || "",
+      active: row.active,
+    });
+    setEditingId(row._id);
+    setNameError("");
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!form.roleName.trim()) {
+      setNameError("Role name is required");
+      return;
+    }
+
+    setSubmitting(true);
     try {
-      if (selectedRole) {
-        await updateRole(selectedRole._id, formData);
+      if (editingId) {
+        await updateRole(editingId, form);
         showToast("Role updated successfully");
       } else {
-        await createRole(formData);
+        await createRole(form);
         showToast("Role created successfully");
       }
-      setDialogOpen(false);
+      resetForm();
       fetchRoles();
     } catch (err) {
-      showToast(
-        err.response?.data?.message ||
-          "Something went wrong. Please try again.",
-        "error",
-      );
+      showToast(err.response?.data?.message || "Something went wrong. Please try again.", "error");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -94,14 +107,11 @@ export default function RoleList() {
     try {
       await deleteRole(deleteTarget._id);
       showToast("Role deleted successfully");
+      if (editingId === deleteTarget._id) resetForm();
       setDeleteTarget(null);
       fetchRoles();
     } catch (err) {
-      showToast(
-        err.response?.data?.message ||
-          "Unable to delete role. Please try again.",
-        "error",
-      );
+      showToast(err.response?.data?.message || "Unable to delete role. Please try again.", "error");
     } finally {
       setDeleting(false);
     }
@@ -119,81 +129,108 @@ export default function RoleList() {
 
   return (
     <MainLayout>
-      <Stack spacing={3} sx={{ width: "100%" }}>
-        <Stack
-          direction="row"
-          justifyContent="space-between"
-          alignItems="left"
-          sx={{ width: "100%", flexWrap: "wrap", gap: 2 }}
-        >
-          <Stack
-            direction="row"
-            spacing={2}
-            sx={{ ml: "auto" }}
-            flexWrap="wrap"
-          >
-            <Typography variant="h5" fontWeight="bold">
-              Role Master
-            </Typography>
+      <div className="row g-3">
+        {/* Left: Create/Edit form */}
+        <div className="col-12 col-lg-4">
+          <div className="card shadow-sm rounded-3 h-100">
+            <div className="card-body">
+              <h6 className="fw-bold mb-3 d-flex align-items-center gap-1">
+                <AddIcon fontSize="small" />
+                {editingId ? "Edit Role" : "Create Role"}
+              </h6>
 
-            <SearchBar
-              value={searchTerm}
-              onChange={setSearchTerm}
-              placeholder="Search roles..."
-            />
+              <form onSubmit={handleSubmit}>
+                <div className="mb-3">
+                  <label className="form-label">
+                    Role Name <span className="text-danger">*</span>
+                  </label>
+                  <input
+                    className={`form-control ${nameError ? "is-invalid" : ""}`}
+                    value={form.roleName}
+                    onChange={(e) => {
+                      setForm((f) => ({ ...f, roleName: e.target.value }));
+                      if (nameError) setNameError("");
+                    }}
+                    placeholder="e.g. Admin, Teacher"
+                    disabled={submitting}
+                  />
+                  {nameError && <div className="invalid-feedback">{nameError}</div>}
+                </div>
 
-            <AddButton
-              label="Add Role"
-              onClick={() => {
-                setSelectedRole(null);
-                setDialogOpen(true);
-              }}
-            />
-          </Stack>
-        </Stack>
+                <div className="mb-3">
+                  <label className="form-label">Description</label>
+                  <textarea
+                    className="form-control"
+                    rows={3}
+                    value={form.description}
+                    onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                    disabled={submitting}
+                  />
+                </div>
 
-        {error && <Alert severity="error">{error}</Alert>}
+                <div className="form-check form-switch mb-3">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    checked={form.active}
+                    onChange={(e) => setForm((f) => ({ ...f, active: e.target.checked }))}
+                    disabled={submitting}
+                    id="roleActiveSwitch"
+                  />
+                  <label className="form-check-label" htmlFor="roleActiveSwitch">
+                    {form.active ? "Active" : "Inactive"}
+                  </label>
+                </div>
 
-        <ResponsiveDataList
-          columns={columns}
-          rows={filteredRoles}
-          loading={loading}
-          emptyMessage='No roles found. Click "Add Role" to create one.'
-          primaryField="roleName"
-          renderActions={(row) => (
-            <>
-              <Tooltip title="Edit">
-                <IconButton
-                  size="small"
-                  color="primary"
-                  onClick={() => {
-                    setSelectedRole(row);
-                    setDialogOpen(true);
-                  }}
-                >
-                  <EditIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Delete">
-                <IconButton
-                  size="small"
-                  color="error"
-                  onClick={() => setDeleteTarget(row)}
-                >
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </>
-          )}
-        />
-      </Stack>
+                <div className="d-flex gap-2">
+                  <button type="submit" className="btn btn-primary flex-grow-1" disabled={submitting}>
+                    {submitting ? "Saving..." : editingId ? "Update" : "Save"}
+                  </button>
+                  {editingId && (
+                    <button
+                      type="button"
+                      className="btn btn-light"
+                      onClick={resetForm}
+                      disabled={submitting}
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
 
-      <RoleForm
-        open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        onSubmit={handleFormSubmit}
-        initialData={selectedRole}
-      />
+        {/* Right: List */}
+        <div className="col-12 col-lg-8">
+          <div className="card shadow-sm rounded-3">
+            <div className="card-body">
+              <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <h6 className="fw-bold mb-0">Role List</h6>
+                <SearchBar
+                  value={searchTerm}
+                  onChange={setSearchTerm}
+                  placeholder="Search roles..."
+                />
+              </div>
+
+              {error && <div className="alert alert-danger py-2">{error}</div>}
+
+              <ResponsiveDataList
+                columns={columns}
+                rows={filteredRoles}
+                loading={loading}
+                minWidth={600}
+                emptyMessage="No roles found. Use the form to create one."
+                renderActions={(row) => (
+                 <RowActions onEdit={() => handleEditClick(row)} onDelete={() => setDeleteTarget(row)} />
+                )}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
 
       <ConfirmDialog
         open={!!deleteTarget}

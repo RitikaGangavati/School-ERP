@@ -1,37 +1,44 @@
 import { createContext, useContext, useState, useCallback } from "react";
-import { Snackbar, Alert } from "@mui/material";
+import { ToastContainer, Toast } from "react-bootstrap";
 
 const ToastContext = createContext(null);
 
 export function ToastProvider({ children }) {
   const [toast, setToast] = useState({
-    open: false,
+    show: false,
     message: "",
-    severity: "success",
+    variant: "success",
   });
 
-  const showToast = useCallback((message, severity = "success") => {
-    setToast({ open: true, message, severity });
+  const showToast = useCallback((message, variant = "success") => {
+    setToast({ show: true, message, variant });
   }, []);
 
   const handleClose = () => {
-    setToast((prev) => ({ ...prev, open: false }));
+    setToast((prev) => ({ ...prev, show: false }));
   };
 
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
 
-      <Snackbar
-        open={toast.open}
-        autoHideDuration={3000}
-        onClose={handleClose}
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+      <ToastContainer
+        position="top-center"
+        className="p-3"
+        style={{ zIndex: 2000, marginTop: 64 }}
       >
-        <Alert severity={toast.severity} onClose={handleClose} sx={{ width: "100%" }}>
-          {toast.message}
-        </Alert>
-      </Snackbar>
+        <Toast
+          show={toast.show}
+          onClose={handleClose}
+          delay={3000}
+          autohide
+          bg={toast.variant === "error" ? "danger" : toast.variant}
+        >
+          <Toast.Body className={toast.variant === "error" || toast.variant === "danger" ? "text-white" : ""}>
+            {toast.message}
+          </Toast.Body>
+        </Toast>
+      </ToastContainer>
     </ToastContext.Provider>
   );
 }

@@ -1,13 +1,14 @@
 const User = require("../models/userModel");
-
+const Role = require("../models/roleModel");
 
 // Create User (admin-only, via User Master)
 const createUser = async (req, res) => {
   try {
-    const { firstName, lastName, email, password, mobile, profile, role, active} = req.body;
+    const { firstName, lastName, email, password, mobile, role, active } =
+      req.body;
 
     // Validation
-    if (!firstName || !lastName || !email || !password || !mobile) {
+    if (!firstName || !lastName || !email || !password || !mobile || !role) {
       return res.status(400).json({
         success: false,
         message: "Please fill all required fields",
@@ -15,7 +16,9 @@ const createUser = async (req, res) => {
     }
 
     // Check existing email
-    const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
+    const existingUser = await User.findOne({
+      email: email.toLowerCase().trim(),
+    });
 
     if (existingUser) {
       return res.status(409).json({
@@ -24,6 +27,14 @@ const createUser = async (req, res) => {
       });
     }
 
+    const roleData = await Role.findById(role);
+
+    if (!roleData) {
+      return res.status(404).json({
+        success: false,
+        message: "Role not found",
+      });
+    }
     // Create user — password gets hashed automatically via the pre("save") hook
     const user = await User.create({
       firstName,
@@ -31,9 +42,8 @@ const createUser = async (req, res) => {
       email: email.toLowerCase().trim(),
       password,
       mobile,
-      profile,
-      role,
-      active
+      role: roleData._id,
+      active,
     });
 
     const userData = user.toObject();
@@ -55,7 +65,10 @@ const createUser = async (req, res) => {
 // Get All Users
 const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select("-password").sort({ created_at: -1 });
+    const users = await User.find()
+      .populate("role", "roleName")
+      .select("-password")
+      .sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
@@ -72,7 +85,9 @@ const getAllUsers = async (req, res) => {
 // Get Single User
 const getUserById = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select("-password");
+    const user = await User.findById(req.params.id)
+      .populate("role", "roleName")
+      .select("-password");
 
     if (!user) {
       return res.status(404).json({
@@ -103,7 +118,7 @@ const getUserById = async (req, res) => {
 // Update User (details + role + active status — NOT password)
 const updateUser = async (req, res) => {
   try {
-    const { firstName, lastName, email, mobile, profile, role, active } = req.body;
+    const { firstName, lastName, email, mobile, role, active } = req.body;
 
     const user = await User.findById(req.params.id);
 
@@ -116,7 +131,9 @@ const updateUser = async (req, res) => {
 
     // Check email uniqueness only if it's being changed
     if (email && email.toLowerCase().trim() !== user.email) {
-      const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
+      const existingUser = await User.findOne({
+        email: email.toLowerCase().trim(),
+      });
 
       if (existingUser) {
         return res.status(409).json({
@@ -131,8 +148,18 @@ const updateUser = async (req, res) => {
     if (firstName !== undefined) user.firstName = firstName;
     if (lastName !== undefined) user.lastName = lastName;
     if (mobile !== undefined) user.mobile = mobile;
-    if (profile !== undefined) user.profile = profile;
-    if (role !== undefined) user.role = role;
+    if (role) {
+      const roleData = await Role.findById(role);
+
+      if (!roleData) {
+        return res.status(404).json({
+          success: false,
+          message: "Role not found",
+        });
+      }
+
+      user.role = roleData._id;
+    }
     if (active !== undefined) user.active = active;
 
     await user.save();

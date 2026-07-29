@@ -1,17 +1,5 @@
 import { useState } from "react";
-import {
-  Box,
-  Paper,
-  Table,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-  TableContainer,
-  TablePagination,
-  Typography,
-  CircularProgress,
-} from "@mui/material";
+import { Table, Spinner, Pagination } from "react-bootstrap";
 
 export default function ResponsiveDataList({
   columns,
@@ -26,86 +14,107 @@ export default function ResponsiveDataList({
 }) {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(rowsPerPageOptions[1] || 10);
-  
-  const handleChangePage = (event, newPage) => setPage(newPage);
-
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0); // reset to first page when page size changes
-  };
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" py={5}>
-        <CircularProgress size={28} />
-      </Box>
+      <div className="d-flex justify-content-center py-5">
+        <Spinner animation="border" />
+      </div>
     );
   }
 
   if (!rows || rows.length === 0) {
-    return (
-      <Box py={5} textAlign="center">
-        <Typography color="text.secondary">{emptyMessage}</Typography>
-      </Box>
-    );
+    return <div className="text-center text-muted py-5">{emptyMessage}</div>;
   }
 
+  const totalPages = Math.ceil(rows.length / rowsPerPage);
   const displayedRows = paginated
     ? rows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
     : rows;
 
   return (
-    <Paper variant="outlined" sx={{ borderRadius: 3, overflow: "hidden" }}>
-      <TableContainer sx={{ maxWidth: "100%" }}>
-        <Table sx={{ minWidth }}>
-          <TableHead sx={{ bgcolor: "grey.50" }}>
-            <TableRow>
+    <div className="border rounded-3 bg-white overflow-hidden">
+      <div style={{ overflowX: "auto" }}>
+        <Table
+          hover
+          responsive
+          className="mb-0 align-middle"
+          style={{ minWidth }}
+        >
+          <colgroup>
+            {columns.map((col) => (
+              <col key={col.field} style={{ width: col.width || "auto" }} />
+            ))}
+            {renderActions && <col style={{ width: "110px" }} />}
+          </colgroup>
+
+          <thead className="table-light">
+            <tr>
               {columns.map((col) => (
-                <TableCell key={col.field} sx={{ fontWeight: 600, whiteSpace: "nowrap" }}>
+                <th key={col.field} className="text-nowrap align-middle">
                   {col.headerName}
-                </TableCell>
+                </th>
               ))}
               {renderActions && (
-                <TableCell sx={{ fontWeight: 600, whiteSpace: "nowrap" }} align="right">
-                  Action
-                </TableCell>
+                <th className="text-nowrap text-end align-middle">Action</th>
               )}
-            </TableRow>
-          </TableHead>
+            </tr>
+          </thead>
 
-          <TableBody>
+          <tbody>
             {displayedRows.map((row) => (
-              <TableRow key={getRowId(row)} hover>
+              <tr key={getRowId(row)}>
                 {columns.map((col) => (
-                  <TableCell
+                  <td
                     key={col.field}
-                    sx={{ color: col.muted ? "text.secondary" : "inherit", whiteSpace: "nowrap" }}
+                    className={`text-nowrap ${col.muted ? "text-muted" : ""}`}
+                    style={{ overflow: "hidden", textOverflow: "ellipsis" }}
                   >
                     {col.render ? col.render(row) : row[col.field] || "—"}
-                  </TableCell>
+                  </td>
                 ))}
                 {renderActions && (
-                  <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
-                    {renderActions(row)}
-                  </TableCell>
+                  <td className="text-nowrap text-end">{renderActions(row)}</td>
                 )}
-              </TableRow>
+              </tr>
             ))}
-          </TableBody>
+          </tbody>
         </Table>
-      </TableContainer>
+      </div>
 
-      {paginated && (
-        <TablePagination
-          component="div"
-          count={rows.length}
-          page={page}
-          onPageChange={handleChangePage}
-          rowsPerPage={rowsPerPage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-          rowsPerPageOptions={rowsPerPageOptions}
-        />
+      {paginated && totalPages > 1 && (
+        <div className="d-flex justify-content-between align-items-center p-2 border-top flex-wrap gap-2">
+          <select
+            className="form-select form-select-sm"
+            style={{ width: "auto" }}
+            value={rowsPerPage}
+            onChange={(e) => {
+              setRowsPerPage(Number(e.target.value));
+              setPage(0);
+            }}
+          >
+            {rowsPerPageOptions.map((n) => (
+              <option key={n} value={n}>
+                {n} / page
+              </option>
+            ))}
+          </select>
+
+          <Pagination className="mb-0">
+            <Pagination.Prev
+              disabled={page === 0}
+              onClick={() => setPage((p) => p - 1)}
+            />
+            <Pagination.Item
+              disabled
+            >{`${page + 1} / ${totalPages}`}</Pagination.Item>
+            <Pagination.Next
+              disabled={page === totalPages - 1}
+              onClick={() => setPage((p) => p + 1)}
+            />
+          </Pagination>
+        </div>
       )}
-    </Paper>
+    </div>
   );
 }

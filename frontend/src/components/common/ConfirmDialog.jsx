@@ -1,12 +1,4 @@
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Typography,
-  Button,
-  CircularProgress,
-} from "@mui/material";
+import { Modal, Button, Spinner } from "react-bootstrap";
 
 export default function ConfirmDialog({
   open,
@@ -16,27 +8,24 @@ export default function ConfirmDialog({
   onCancel,
   loading,
   confirmLabel = "Delete",
-  confirmColor = "error",
+  confirmVariant = "danger",
 }) {
   return (
-    <Dialog open={open} onClose={onCancel}>
-      <DialogTitle>{title}</DialogTitle>
-      <DialogContent>
-        <Typography>{message}</Typography>
-      </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onCancel} disabled={loading}>
+    <Modal show={open} onHide={onCancel} centered>
+      <Modal.Header closeButton>
+        <Modal.Title as="h6">{title}</Modal.Title>
+      </Modal.Header>
+
+      <Modal.Body>{message}</Modal.Body>
+
+      <Modal.Footer>
+        <Button variant="light" onClick={onCancel} disabled={loading}>
           Cancel
         </Button>
-        <Button
-          variant="contained"
-          color={confirmColor}
-          onClick={onConfirm}
-          disabled={loading}
-        >
-          {loading ? <CircularProgress size={20} color="inherit" /> : confirmLabel}
+        <Button variant={confirmVariant} onClick={onConfirm} disabled={loading}>
+          {loading ? <Spinner size="sm" animation="border" /> : confirmLabel}
         </Button>
-      </DialogActions>
-    </Dialog>
+      </Modal.Footer>
+    </Modal>
   );
 }

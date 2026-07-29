@@ -1,16 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
-  Stack,
-  FormControlLabel,
-  Switch,
-  CircularProgress,
-} from "@mui/material";
+import { Modal, Button, Spinner, Form } from "react-bootstrap";
 
 export default function RoleForm({ open, onClose, onSubmit, initialData }) {
   const isEdit = Boolean(initialData);
@@ -49,66 +38,55 @@ export default function RoleForm({ open, onClose, onSubmit, initialData }) {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>{isEdit ? "Edit Role" : "Add Role"}</DialogTitle>
+    <Modal show={open} onHide={onClose} centered>
+      <Modal.Header closeButton>
+        <Modal.Title as="h5">{isEdit ? "Edit Role" : "Add Role"}</Modal.Title>
+      </Modal.Header>
 
-      <DialogContent>
-        <Stack spacing={2.5} sx={{ mt: 1 }}>
-          <TextField
-            label="Role Name"
-            fullWidth
+      <Modal.Body>
+        <Form.Group className="mb-3">
+          <Form.Label>Role Name</Form.Label>
+          <Form.Control
             value={roleName}
             onChange={(e) => {
               setRoleName(e.target.value);
               if (nameError) setNameError("");
             }}
-            error={!!nameError}
-            helperText={nameError}
+            isInvalid={!!nameError}
             disabled={submitting}
             autoFocus
           />
+          <Form.Control.Feedback type="invalid">{nameError}</Form.Control.Feedback>
+        </Form.Group>
 
-          <TextField
-            label="Description"
-            fullWidth
-            multiline
+        <Form.Group className="mb-3">
+          <Form.Label>Description</Form.Label>
+          <Form.Control
+            as="textarea"
             rows={3}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             disabled={submitting}
           />
+        </Form.Group>
 
-          <FormControlLabel
-            control={
-              <Switch
-                checked={active}
-                onChange={(e) => setActive(e.target.checked)}
-                disabled={submitting}
-              />
-            }
-            label={active ? "Active" : "Inactive"}
-          />
-        </Stack>
-      </DialogContent>
+        <Form.Check
+          type="switch"
+          label={active ? "Active" : "Inactive"}
+          checked={active}
+          onChange={(e) => setActive(e.target.checked)}
+          disabled={submitting}
+        />
+      </Modal.Body>
 
-      <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose} disabled={submitting}>
+      <Modal.Footer>
+        <Button variant="light" onClick={onClose} disabled={submitting}>
           Cancel
         </Button>
-        <Button
-          variant="contained"
-          onClick={handleSubmit}
-          disabled={submitting}
-        >
-          {submitting ? (
-            <CircularProgress size={22} color="inherit" />
-          ) : isEdit ? (
-            "Update"
-          ) : (
-            "Save"
-          )}
+        <Button variant="primary" onClick={handleSubmit} disabled={submitting}>
+          {submitting ? <Spinner size="sm" animation="border" /> : isEdit ? "Update" : "Save"}
         </Button>
-      </DialogActions>
-    </Dialog>
+      </Modal.Footer>
+    </Modal>
   );
 }

@@ -1,38 +1,32 @@
 import { useState } from "react";
-import {
-  TextField,
-  InputAdornment,
-  IconButton,
-} from "@mui/material";
-
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 
-export default function PasswordField(props) {
+export default function PasswordField({ value, onChange, error, disabled, ...rest }) {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <TextField
-      {...props}
-      type={showPassword ? "text" : "password"}
-      slotProps={{
-        input: {
-          endAdornment: (
-            <InputAdornment position="end">
-              <IconButton
-                edge="end"
-                onClick={() => setShowPassword((prev) => !prev)}
-              >
-                {showPassword ? (
-                  <VisibilityOffIcon />
-                ) : (
-                  <VisibilityIcon />
-                )}
-              </IconButton>
-            </InputAdornment>
-          ),
-        },
-      }}
-    />
+    <div>
+      <div className="input-group">
+        <input
+          type={showPassword ? "text" : "password"}
+          className={`form-control ${error ? "is-invalid" : ""}`}
+          value={value}
+          onChange={onChange}
+          disabled={disabled}
+          {...rest}
+        />
+        <button
+          type="button"
+          className="btn btn-outline-secondary"
+          onClick={() => setShowPassword((prev) => !prev)}
+          disabled={disabled}
+          tabIndex={-1}
+        >
+          {showPassword ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+        </button>
+        {error && <div className="invalid-feedback">{error}</div>}
+      </div>
+    </div>
   );
 }

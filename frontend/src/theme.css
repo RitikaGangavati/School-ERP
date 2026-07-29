@@ -1,0 +1,208 @@
+/* ==========================================================
+   SCHOOL ERP SLATE THEME
+========================================================== */
+
+:root {
+  /* Brand */
+  --brand-sidebar: #334155;
+  --brand-sidebar-hover: #475569;
+
+  --brand-primary: #4f46e5;
+  --brand-hover: #6366f1;
+
+  --brand-bg: #f8fafc;
+  --brand-card: #ffffff;
+  --brand-border: #e5e7eb;
+
+  /* Bootstrap */
+  --bs-primary: #4f46e5;
+  --bs-primary-rgb: 79, 70, 229;
+
+  --bs-link-color: #334155;
+  --bs-link-hover-color: #4f46e5;
+}
+
+/* ==========================================================
+   BODY
+========================================================== */
+
+body {
+  background: #f8fafc;
+}
+
+/* ==========================================================
+   CARD
+========================================================== */
+
+.card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+}
+
+.card-header {
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* ==========================================================
+   BUTTONS
+========================================================== */
+
+.btn-primary {
+  --bs-btn-bg: #4f46e5;
+  --bs-btn-border-color: #4f46e5;
+
+  --bs-btn-hover-bg: #6366f1;
+  --bs-btn-hover-border-color: #6366f1;
+
+  --bs-btn-active-bg: #4338ca;
+  --bs-btn-active-border-color: #4338ca;
+
+  --bs-btn-focus-shadow-rgb: 79, 70, 229;
+
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.btn-outline-primary {
+  --bs-btn-color: #334155;
+  --bs-btn-border-color: #334155;
+
+  --bs-btn-hover-bg: #4f46e5;
+  --bs-btn-hover-border-color: #4f46e5;
+  --bs-btn-hover-color: #fff;
+
+  --bs-btn-active-bg: #4338ca;
+  --bs-btn-active-border-color: #4338ca;
+
+  border-radius: 8px;
+}
+
+/* ==========================================================
+   FORM
+========================================================== */
+
+.form-control,
+.form-select {
+  border-color: #d1d5db;
+  border-radius: 8px;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 .2rem rgba(99,102,241,.18);
+}
+
+.form-check-input:checked {
+  background: #4f46e5;
+  border-color: #4f46e5;
+}
+
+.form-check-input:focus {
+  box-shadow: 0 0 0 .2rem rgba(99,102,241,.18);
+}
+
+/* ==========================================================
+   TABLE
+========================================================== */
+
+.table thead th {
+  background: #f1f5f9;
+  color: #334155;
+  font-weight: 600;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.table-hover tbody tr:hover {
+  background: #f8fafc;
+}
+
+/* ==========================================================
+   PAGINATION
+========================================================== */
+
+.page-link {
+  color: #334155;
+}
+
+.page-link:hover {
+  background: #6366f1;
+  color: #fff;
+  border-color: #6366f1;
+}
+
+.page-item.active .page-link {
+  background: #4f46e5;
+  border-color: #4f46e5;
+}
+
+/* ==========================================================
+   DROPDOWN
+========================================================== */
+
+.dropdown-item:hover {
+  background: #eef2ff;
+  color: #334155;
+}
+
+/* ==========================================================
+   ACCORDION
+========================================================== */
+
+.accordion-button:not(.collapsed) {
+  background: #eef2ff;
+  color: #334155;
+}
+
+.accordion-button:focus {
+  box-shadow: 0 0 0 .2rem rgba(99,102,241,.18);
+}
+
+/* ==========================================================
+   LINKS
+========================================================== */
+
+a {
+  color: #334155;
+}
+
+a:hover {
+  color: #4f46e5;
+}
+
+/* ==========================================================
+   SPINNER
+========================================================== */
+
+.spinner-border {
+  color: #4f46e5;
+}
+
+/* ==========================================================
+   SCROLLBAR
+========================================================== */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 20px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ==========================================================
+   SELECTION
+========================================================== */
+
+::selection {
+  background: #6366f1;
+  color: #fff;
+}
