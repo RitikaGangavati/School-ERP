@@ -28,8 +28,16 @@ const subjectGroupSchema = new mongoose.Schema(
 
     subjects: [
       {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Subject",
+        subject: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Subject",
+          required: true,
+        },
+        periodsPerWeek: {
+          type: Number,
+          required: true,
+          min: 1,
+        },
       },
     ],
 

@@ -19,6 +19,14 @@ import StudentView from "../pages/students/StudentView";
 import TeacherForm from "../pages/teachers/TeacherForm";
 import TeacherList from "../pages/teachers/TeacherList";
 import ClassTeachersList from "../pages/class-teachers";
+import StudentPromotion from "../pages/student-promotion";
+import TimeSlots from "../pages/time-slots";
+import ClassTimetableView from "../pages/class-timetable/ClassTimetableView";
+import AddClassTimetable from "../pages/class-timetable/AddClassTimetable";
+import TeacherTimetableView from "../pages/teacher-timetable/TeacherTimetableView";
+import SubjectTeacher from "../pages/subject-teachers";
+import ClassRoutine from "../pages/class-timetable/ClassRoutine";
+import  Attendance from "../pages/attendance"
 
 export default function AppRoutes() {
   return (
@@ -179,20 +187,78 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
-       <Route
+      <Route
         path="/class-teachers"
         element={
           <ProtectedRoute>
-           <ClassTeachersList/>
+            <ClassTeachersList />
           </ProtectedRoute>
         }
       />
-
-
-
-
-
-
+      <Route
+        path="/student-promotion"
+        element={
+          <ProtectedRoute>
+            <StudentPromotion />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/time-slots"
+        element={
+          <ProtectedRoute>
+            <TimeSlots />
+          </ProtectedRoute>
+        }
+      />
+       <Route
+        path="/class-timetable"
+        element={
+          <ProtectedRoute>
+         <ClassTimetableView/>
+          </ProtectedRoute>
+        }
+      />
+       <Route
+        path="/add-class-timetable"
+        element={
+          <ProtectedRoute>
+         <AddClassTimetable/>
+          </ProtectedRoute>
+        }
+      />
+       <Route
+        path="/teacher-timetable"
+        element={
+          <ProtectedRoute>
+         <TeacherTimetableView/>
+          </ProtectedRoute>
+        }
+      />
+       <Route
+        path="/subject-teachers"
+        element={
+          <ProtectedRoute>
+         <SubjectTeacher/>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/class-routine"
+        element={
+          <ProtectedRoute>
+         <ClassRoutine/>
+          </ProtectedRoute>
+        }
+      />
+       <Route
+        path="/attendance"
+        element={
+          <ProtectedRoute>
+          <Attendance/>
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   );
 }

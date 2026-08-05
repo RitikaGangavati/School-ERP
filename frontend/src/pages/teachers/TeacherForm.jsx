@@ -147,6 +147,7 @@ export default function TeacherForm() {
     }
     if (tab === "employment") {
       if (!form.employeeId.trim()) errs.employeeId = "Employee ID is required";
+      if (form.subjects.length === 0) errs.subjects = "Select at least one subject";
     }
     setFieldErrors(errs);
     return Object.keys(errs).length === 0;
@@ -366,23 +367,28 @@ export default function TeacherForm() {
                     </div>
 
                     <div className="mb-3">
-                      <label className="form-label">Subjects Taught</label>
-                      <div className="d-flex flex-wrap gap-2">
-                        {allSubjects.map((sub) => {
-                          const isChecked = form.subjects.includes(sub._id);
-                          return (
-                            <div
-                              key={sub._id}
-                              onClick={() => !submitting && toggleSubject(sub._id)}
-                              className={`px-3 py-1 rounded-pill border ${isChecked ? "bg-primary text-white border-primary" : "bg-white text-dark"}`}
-                              style={{ cursor: submitting ? "default" : "pointer", userSelect: "none" }}
-                            >
-                              {sub.subjectName}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
+  <label className="form-label">
+    Subjects Taught <span className="text-danger">*</span>
+  </label>
+  <div className="d-flex flex-wrap gap-2">
+    {allSubjects.map((sub) => {
+      const isChecked = form.subjects.includes(sub._id);
+      return (
+        <div
+          key={sub._id}
+          onClick={() => !submitting && toggleSubject(sub._id)}
+          className={`px-3 py-1 rounded-pill border ${isChecked ? "bg-primary text-white border-primary" : "bg-white text-dark"}`}
+          style={{ cursor: submitting ? "default" : "pointer", userSelect: "none" }}
+        >
+          {sub.subjectName}
+        </div>
+      );
+    })}
+  </div>
+  {fieldErrors.subjects && (
+    <div className="text-danger small mt-1">{fieldErrors.subjects}</div>
+  )}
+</div>
 
                     <div className="form-check form-switch mb-2">
                       <input

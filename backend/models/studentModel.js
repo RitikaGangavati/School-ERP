@@ -3,14 +3,20 @@ const mongoose = require("mongoose");
 const personalSchema = new mongoose.Schema(
   {
     firstName: { type: String, required: true, trim: true },
+    middleName: { type: String, trim: true, default: "" },
     lastName: { type: String, required: true, trim: true },
     dob: { type: Date, required: true },
+    birthPlace: { type: String, trim: true, default: "" },
     gender: { type: String, enum: ["Male", "Female", "Other"], required: true },
     mobile: { type: String, trim: true, default: "" },
     email: { type: String, trim: true, lowercase: true, default: "" },
     aadhaarNo: { type: String, trim: true, default: "" },
     religion: { type: String, trim: true, default: "" },
-   category: { type: mongoose.Schema.Types.ObjectId, ref: "Category", default: null },
+    category: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Category",
+      default: null,
+    },
     casteName: { type: String, trim: true, default: "" },
     motherTongue: { type: String, trim: true, default: "" },
     photo: { type: String, default: "" },
@@ -22,6 +28,11 @@ const academicSchema = new mongoose.Schema(
   {
     admissionNumber: { type: String, required: true, trim: true },
     admissionDate: { type: Date, default: Date.now },
+    admissionType: {
+      type: String,
+      enum: ["New Admission", "Transfer", "Readmission"],
+      default: "New Admission",
+    },
     academicYear: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "AcademicYear",
@@ -38,7 +49,11 @@ const academicSchema = new mongoose.Schema(
       required: true,
     },
     rollNo: { type: String, trim: true, default: "" },
-    house: { type: mongoose.Schema.Types.ObjectId, ref: "House", default: null },
+    house: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "House",
+      default: null,
+    },
     status: {
       type: String,
       enum: ["Active", "Inactive", "Transferred", "Graduated"],
@@ -53,6 +68,15 @@ const healthSchema = new mongoose.Schema(
     bloodGroup: { type: String, trim: true, default: "" },
     height: { type: Number, default: null },
     weight: { type: Number, default: null },
+    allergies: {
+      type: String,
+      default: "",
+    },
+
+    disability: {
+      type: String,
+      default: "",
+    },
     medicalHistory: { type: String, trim: true, default: "" },
   },
   { _id: false },
@@ -64,12 +88,14 @@ const parentSchema = new mongoose.Schema(
     fatherPhone: { type: String, trim: true, default: "" },
     fatherOccupation: { type: String, trim: true, default: "" },
     fatherPhoto: { type: String, default: "" },
-
     motherName: { type: String, trim: true, default: "" },
     motherPhone: { type: String, trim: true, default: "" },
     motherOccupation: { type: String, trim: true, default: "" },
     motherPhoto: { type: String, default: "" },
-
+    annualIncome: {
+      type: Number,
+      default: null,
+    },
     guardianIs: {
       type: String,
       enum: ["Father", "Mother", "Other"],
@@ -103,6 +129,12 @@ const studentSchema = new mongoose.Schema(
     health: { type: healthSchema, default: () => ({}) },
     parent: { type: parentSchema, default: () => ({}) },
     address: { type: addressSchema, default: () => ({}) },
+    documents: [
+      {
+        name: String,
+        file: String,
+      },
+    ],
 
     active: { type: Boolean, default: true },
   },

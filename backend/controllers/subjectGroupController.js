@@ -3,7 +3,7 @@ const SubjectGroup = require("../models/subjectGroupModel");
 const populateFields = [
   { path: "class", select: "className" },
   { path: "sections", select: "sectionName" },
-  { path: "subjects", select: "subjectName" },
+  { path: "subjects.subject", select: "subjectName" },
   { path: "academicYear", select: "name" },
 ];
 
@@ -77,6 +77,16 @@ const createSubjectGroup = async (req, res) => {
         success: false,
         message:
           "A subject group with this name already exists for the selected class",
+      });
+    }
+
+    if (error.name === "ValidationError") {
+      const firstError = Object.values(error.errors)[0]?.message;
+      return res.status(400).json({
+        success: false,
+        message:
+          firstError ||
+          "Please check the subjects — each one needs a subject and periods per week.",
       });
     }
 
@@ -217,6 +227,16 @@ const updateSubjectGroup = async (req, res) => {
         success: false,
         message:
           "A subject group with this name already exists for the selected class",
+      });
+    }
+
+    if (error.name === "ValidationError") {
+      const firstError = Object.values(error.errors)[0]?.message;
+      return res.status(400).json({
+        success: false,
+        message:
+          firstError ||
+          "Please check the subjects — each one needs a subject and periods per week.",
       });
     }
 

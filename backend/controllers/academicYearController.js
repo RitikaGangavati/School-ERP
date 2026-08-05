@@ -54,6 +54,23 @@ const createAcademicYear = async (req, res) => {
   }
 };
 
+const getCurrentAcademicYear = async (req, res) => {
+  try {
+    const current = await AcademicYear.findOne({ isCurrent: true, active: true });
+
+    if (!current) {
+      return res.status(404).json({
+        success: false,
+        message: "No academic year is marked as current.",
+      });
+    }
+
+    return res.status(200).json({ success: true, academicYear: current });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // Get All Academic Years
 const getAllAcademicYears = async (req, res) => {
   try {
@@ -209,6 +226,7 @@ const deleteAcademicYear = async (req, res) => {
 
 module.exports = {
   createAcademicYear,
+  getCurrentAcademicYear,
   getAllAcademicYears,
   getAcademicYearById,
   updateAcademicYear,

@@ -10,9 +10,9 @@ import ConfirmDialog from "../../components/common/ConfirmDialog";
 import StatusChip from "../../components/common/StatusChip";
 import SearchBar from "../../components/common/SearchBar";
 import { useToast } from "../../components/common/ToastContext";
+import { useAcademicYear } from "../../context/AcademicYearContext";
+import AcademicYearBadge from "../../components/common/AcademicYearBadge";
 import RowActions from "../../components/common/RowActions";
-
-import { getAcademicYears } from "../../services/academicYearService";
 import { getClasses } from "../../services/classService";
 import { getTeachers } from "..//../services/teacherService";
 
@@ -24,7 +24,6 @@ import {
 } from "../../services/classTeacherService";
 
 const emptyForm = {
-  academicYear: "",
   class: "",
   section: "",
   teacher: "",
@@ -33,8 +32,9 @@ const emptyForm = {
 
 export default function ClassTeachersList() {
   const { showToast } = useToast();
+  const { currentYear } = useAcademicYear();
+
   const [classTeachers, setClassTeachers] = useState([]);
-  const [academicYears, setAcademicYears] = useState([]);
   const [allClasses, setAllClasses] = useState([]);
   const [teachers, setTeachers] = useState([]);
 
@@ -55,13 +55,11 @@ export default function ClassTeachersList() {
     setLoadingOptions(true);
 
     try {
-      const [yearRes, classRes, teacherRes] = await Promise.all([
-        getAcademicYears(),
+      const [classRes, teacherRes] = await Promise.all([
         getClasses(),
         getTeachers(),
       ]);
 
-      setAcademicYears(yearRes.data.academicYears || []);
       setAllClasses(classRes.data.classes || []);
       setTeachers(teacherRes.data.teachers || []);
     } finally {
@@ -92,8 +90,6 @@ export default function ClassTeachersList() {
   const validate = () => {
     const err = {};
 
-    if (!form.academicYear) err.academicYear = "Academic Year is required";
-
     if (!form.class) err.class = "Class is required";
 
     if (!form.section) err.section = "Section is required";
@@ -107,7 +103,6 @@ export default function ClassTeachersList() {
 
   const handleEditClick = (row) => {
     setForm({
-      academicYear: row.academicYear?._id,
       class: row.class?._id,
       section: row.section?._id,
       teacher: row.teacher?._id,
@@ -119,17 +114,25 @@ export default function ClassTeachersList() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+     if (!currentYear) {
+      showToast(
+        "No current academic year set. Set one in Academic Year master first.",
+        "error",
+      );
+      return;
+    }
 
     if (!validate()) return;
 
     setSubmitting(true);
 
     try {
+       const payload = { ...form, academicYear: currentYear._id };
       if (editingId) {
-        await updateClassTeacher(editingId, form);
+        await updateClassTeacher(editingId, payload);
         showToast("Class teacher updated successfully");
       } else {
-        await createClassTeacher(form);
+        await createClassTeacher(payload);
         showToast("Class teacher assigned successfully");
       }
 
@@ -173,10 +176,10 @@ export default function ClassTeachersList() {
 
   const columns = [
     {
-      field: "academicYear",
-      headerName: "Academic Year",
-      render: (row) => row.academicYear?.name || "—",
-    },
+    field: "academicYear",
+    headerName: "Year",
+    render: (row) => row.academicYear?.name || "—",
+  },
     {
       field: "class",
       headerName: "Class",
@@ -220,40 +223,8 @@ return (
             </h6>
 
             <form onSubmit={handleSubmit}>
-              {/* Academic Year */}
-              <div className="mb-3">
-                <label className="form-label">
-                  Academic Year <span className="text-danger">*</span>
-                </label>
-
-                <select
-                  className={`form-select ${
-                    nameError.academicYear ? "is-invalid" : ""
-                  }`}
-                  value={form.academicYear}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      academicYear: e.target.value,
-                    })
-                  }
-                >
-                  <option value="">Select Academic Year</option>
-
-                  {academicYears.map((year) => (
-                    <option key={year._id} value={year._id}>
-                      {year.name}
-                    </option>
-                  ))}
-                </select>
-
-                {nameError.academicYear && (
-                  <div className="invalid-feedback d-block">
-                    {nameError.academicYear}
-                  </div>
-                )}
-              </div>
-
+            <AcademicYearBadge/>
+            
               {/* Class */}
               <div className="mb-3">
                 <label className="form-label">

@@ -29,7 +29,12 @@ const houseRT = require("./routes/houseRT");
 const studentRT = require("./routes/studentRT");
 const uploadRT = require("./routes/uploadRT");
 const teacherRT = require("./routes/teacherRT");
-const classTeacherRT = require("./routes/classTeacherRT")
+const classTeacherRT = require("./routes/classTeacherRT");
+const studentPromotionRT = require("./routes/studentPromotionRT");
+const timeSlotRT = require("./routes/timeSlotRT");
+const timeTableRT = require("./routes/timeTableRT");
+const subjectTeacherRT = require("./routes/subjectTeacherRT")
+const attendanceRT = require("./routes/attendanceRT");
 
 app.use('/api/auth',authRT);
 app.use('/api/roles',roleRT);
@@ -45,8 +50,11 @@ app.use("/api/students", studentRT);
 app.use("/api/upload", uploadRT);
 app.use("/api/teachers", teacherRT);
 app.use("/api/class-teachers", classTeacherRT);
-
-
+app.use("/api/student-promotion", studentPromotionRT);
+app.use("/api/time-slots", timeSlotRT);
+app.use("/api/timetable", timeTableRT);
+app.use("/api/subject-teachers", subjectTeacherRT);
+app.use("/api/attendance", attendanceRT);
 
 
 //Route test

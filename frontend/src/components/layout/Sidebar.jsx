@@ -30,18 +30,24 @@ const menuGroups = [
   {
     label: "General",
     groupIcon: <SpaceDashboardIcon />,
-    items: [{ label: "Dashboard", path: "/dashboard", icon: <DashboardIcon /> }],
+    items: [
+      { label: "Dashboard", path: "/dashboard", icon: <DashboardIcon /> },
+    ],
   },
   {
     label: "Academics",
     groupIcon: <MenuBookOutlinedIcon />,
     items: [
+      { label: "Teachers Timetable ", path: "/teacher-timetable" },
+      { label: "Class Timetable ", path: "/class-timetable" },
+      { label: "Time Slots", path: "/time-slots" },
       { label: "Assign Class Teachers", path: "/class-teachers" },
+       { label: "Assign Subject Teachers", path: "/subject-teachers" },
       { label: "Subject Group", path: "/subject-groups" },
       { label: "Classes", path: "/classes" },
       { label: "Sections", path: "/sections" },
       { label: "Subjects", path: "/subjects" },
-      { label: "Academic Year", path: "/academic-years"},
+      { label: "Academic Year", path: "/academic-years" },
     ],
   },
   {
@@ -57,12 +63,14 @@ const menuGroups = [
     label: "Student Information",
     groupIcon: <Diversity3Icon />,
     items: [
+      {
+        label: "Promote Students",
+        path: "/student-promotion",
+        icon: <ClassIcon fontSize="small" />,
+      },
       { label: "Students", path: "/students" },
       { label: "Student Category", path: "/category" },
       { label: "Student House", path: "/house" },
-      
-      
-
     ],
   },
   {
@@ -71,7 +79,6 @@ const menuGroups = [
     items: [
       { label: "Attendance", path: "/attendance" },
       { label: "Settings", path: "/settings" },
-   
     ],
   },
 ];
@@ -90,7 +97,7 @@ export default function Sidebar({
     const initial = {};
     menuGroups.forEach((group) => {
       initial[group.label] = group.items.some(
-        (item) => item.path === location.pathname
+        (item) => item.path === location.pathname,
       );
     });
     if (!Object.values(initial).some(Boolean)) {
@@ -137,14 +144,20 @@ export default function Sidebar({
               )}
             </button>
           </div>
-          <hr className="my-0" style={{ borderColor: COLORS.divider, opacity: 1 }} />
+          <hr
+            className="my-0"
+            style={{ borderColor: COLORS.divider, opacity: 1 }}
+          />
         </>
       )}
 
       <nav className="flex-grow-1 overflow-auto p-2">
         {menuGroups.map((group, idx) => {
-          const isOpen = collapsed && !isMobile ? true : !!openGroups[group.label];
-          const groupHasActive = group.items.some((i) => i.path === location.pathname);
+          const isOpen =
+            collapsed && !isMobile ? true : !!openGroups[group.label];
+          const groupHasActive = group.items.some(
+            (i) => i.path === location.pathname,
+          );
 
           return (
             <div key={group.label} className={idx !== 0 ? "mt-1" : ""}>
@@ -152,14 +165,19 @@ export default function Sidebar({
               <button
                 onClick={() => toggleGroup(group.label)}
                 className={`btn w-100 d-flex align-items-center gap-2 mb-1 rounded-3 border-0 ${
-                  collapsed && !isMobile ? "justify-content-center" : "justify-content-between"
+                  collapsed && !isMobile
+                    ? "justify-content-center"
+                    : "justify-content-between"
                 }`}
                 style={{
                   height: 48,
-                  background: groupHasActive && !isOpen ? COLORS.hoverBg : "transparent",
+                  background:
+                    groupHasActive && !isOpen ? COLORS.hoverBg : "transparent",
                   transition: "background 0.15s ease",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = COLORS.hoverBg)}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = COLORS.hoverBg)
+                }
                 onMouseLeave={(e) =>
                   (e.currentTarget.style.background =
                     groupHasActive && !isOpen ? COLORS.hoverBg : "transparent")
@@ -175,7 +193,11 @@ export default function Sidebar({
                   {(!collapsed || isMobile) && (
                     <span
                       className="text-truncate"
-                      style={{ fontSize: 15, fontWeight: 600, color: COLORS.textPrimary }}
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 600,
+                        color: COLORS.textPrimary,
+                      }}
                     >
                       {group.label}
                     </span>
@@ -207,52 +229,65 @@ export default function Sidebar({
                   className={collapsed && !isMobile ? "" : "ps-3 ms-1"}
                   style={{
                     borderLeft:
-                      collapsed && !isMobile ? "none" : `1px solid ${COLORS.divider}`,
+                      collapsed && !isMobile
+                        ? "none"
+                        : `1px solid ${COLORS.divider}`,
                   }}
                 >
-                {group.items.map((item) => {
-  const isActive = location.pathname === item.path;
-  return (
-    <button
-      key={item.path}
-      onClick={() => handleNavigate(item.path)}
-      className={`btn w-100 text-start d-flex align-items-center mb-2 border-0 ${
-        collapsed && !isMobile ? "justify-content-center" : ""
-      }`}
-      style={{
-        height: 42,
-        borderRadius: 10,                 // rounded rectangle, not full pill
-        background: isActive ? COLORS.activeBg : "transparent",
-        color: isActive ? COLORS.activeText : COLORS.textMuted,
-        fontWeight: isActive ? 600 : 500,
-        paddingLeft: 16,                  // even padding, no accent bar offset
-        transition: "background 0.15s ease, color 0.15s ease",
-      }}
-      onMouseEnter={(e) => {
-        if (!isActive) e.currentTarget.style.background = COLORS.hoverBg;
-      }}
-      onMouseLeave={(e) => {
-        if (!isActive) e.currentTarget.style.background = "transparent";
-      }}
-      title={collapsed && !isMobile ? item.label : ""}
-    >
-      {(!collapsed || isMobile) ? (
-        <span className="text-truncate" style={{ fontSize: 13.5 }}>
-          {item.label}
-        </span>
-      ) : (
-        <span
-          style={{
-            width: 8,
-            height: 8,
-            borderRadius: "50%",
-            background: isActive ? COLORS.activeAccent : COLORS.textMuted,
-          }}
-        />
-      )}
-    </button>
-  );
-})}
+                  {group.items.map((item) => {
+                    const isActive = location.pathname === item.path;
+                    return (
+                      <button
+                        key={item.path}
+                        onClick={() => handleNavigate(item.path)}
+                        className={`btn w-100 text-start d-flex align-items-center mb-2 border-0 ${
+                          collapsed && !isMobile ? "justify-content-center" : ""
+                        }`}
+                        style={{
+                          height: 42,
+                          borderRadius: 10, // rounded rectangle, not full pill
+                          background: isActive
+                            ? COLORS.activeBg
+                            : "transparent",
+                          color: isActive
+                            ? COLORS.activeText
+                            : COLORS.textMuted,
+                          fontWeight: isActive ? 600 : 500,
+                          paddingLeft: 16, // even padding, no accent bar offset
+                          transition: "background 0.15s ease, color 0.15s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isActive)
+                            e.currentTarget.style.background = COLORS.hoverBg;
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isActive)
+                            e.currentTarget.style.background = "transparent";
+                        }}
+                        title={collapsed && !isMobile ? item.label : ""}
+                      >
+                        {!collapsed || isMobile ? (
+                          <span
+                            className="text-truncate"
+                            style={{ fontSize: 13.5 }}
+                          >
+                            {item.label}
+                          </span>
+                        ) : (
+                          <span
+                            style={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: "50%",
+                              background: isActive
+                                ? COLORS.activeAccent
+                                : COLORS.textMuted,
+                            }}
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>

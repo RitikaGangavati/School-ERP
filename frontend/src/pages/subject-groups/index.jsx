@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import EditIcon from "@mui/icons-material/EditOutlined";
 import DeleteIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import AddIcon from "@mui/icons-material/Add";
+import CloseIcon from "@mui/icons-material/Close";
 
 import MainLayout from "../../components/layout/MainLayout";
 import ResponsiveDataList from "../../components/common/ResponsiveDataList";
@@ -14,7 +15,8 @@ import { useToast } from "../../components/common/ToastContext";
 import { getClasses } from "../../services/classService";
 import RowActions from "../../components/common/RowActions";
 import { getSubjects } from "../../services/subjectService";
-import { getAcademicYears } from "../../services/academicYearService";
+import { useAcademicYear } from "../../context/AcademicYearContext";
+import AcademicYearBadge from "../../components/common/AcademicYearBadge";
 import {
   getSubjectGroups,
   createSubjectGroup,
@@ -23,17 +25,17 @@ import {
 } from "../../services/subjectGroupService";
 
 const emptyForm = {
-  academicYear: "",
   groupName: "",
   class: "",
   sections: [],
-  subjects: [],
+  subjects: [], // [{ subject: "<id>", periodsPerWeek: 6 }, ...]
   description: "",
   active: true,
 };
 
 export default function SubjectGroupList() {
   const { showToast } = useToast();
+  const { currentYear } = useAcademicYear();
 
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -49,9 +51,10 @@ export default function SubjectGroupList() {
   const [nameError, setNameError] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
+  const [subjectToAdd, setSubjectToAdd] = useState("");
+
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
-  const [academicYears, setAcademicYears] = useState([]);
 
   const fetchGroups = useCallback(async () => {
     setLoading(true);
@@ -75,15 +78,12 @@ export default function SubjectGroupList() {
       const [classRes, subjectRes, academicRes] = await Promise.all([
         getClasses(),
         getSubjects(),
-        getAcademicYears(),
       ]);
       setAllClasses(classRes.data.classes || []);
       setAllSubjects(subjectRes.data.subjects || []);
-      setAcademicYears(academicRes.data.academicYears || []);
     } catch (err) {
       setAllClasses([]);
       setAllSubjects([]);
-      setAcademicYears([]);
     } finally {
       setLoadingOptions(false);
     }
@@ -102,24 +102,34 @@ export default function SubjectGroupList() {
   const selectedClassObj = allClasses.find((c) => c._id === form.class);
   const availableSections = selectedClassObj?.sections || [];
 
+  // Subjects not yet added to the group — this is what the "add subject" dropdown offers
+  const subjectsNotYetAdded = allSubjects.filter(
+    (sub) => !form.subjects.some((row) => row.subject === sub._id),
+  );
+
   const resetForm = () => {
     setForm(emptyForm);
     setEditingId(null);
     setNameError({});
+    setSubjectToAdd("");
   };
 
   const handleEditClick = (row) => {
     setForm({
-      academicYear: row.academicYear?._id || "",
       groupName: row.groupName,
       class: row.class?._id || "",
       sections: row.sections?.map((s) => s._id) || [],
-      subjects: row.subjects?.map((s) => s._id) || [],
+      subjects:
+        row.subjects?.map((s) => ({
+          subject: s.subject?._id || s.subject,
+          periodsPerWeek: s.periodsPerWeek,
+        })) || [],
       description: row.description || "",
       active: row.active,
     });
     setEditingId(row._id);
     setNameError({});
+    setSubjectToAdd("");
   };
 
   const handleClassChange = (classId) => {
@@ -137,39 +147,71 @@ export default function SubjectGroupList() {
     }));
   };
 
-  const toggleSubject = (id) => {
+  // ---- Subject row-builder ----
+  const addSubjectRow = () => {
+    if (!subjectToAdd) return;
     setForm((f) => ({
       ...f,
-      subjects: f.subjects.includes(id)
-        ? f.subjects.filter((s) => s !== id)
-        : [...f.subjects, id],
+      subjects: [...f.subjects, { subject: subjectToAdd, periodsPerWeek: 1 }],
+    }));
+    setSubjectToAdd("");
+    if (nameError.subjects) setNameError((e) => ({ ...e, subjects: "" }));
+  };
+
+  const updatePeriodsPerWeek = (subjectId, value) => {
+    setForm((f) => ({
+      ...f,
+      subjects: f.subjects.map((row) =>
+        row.subject === subjectId
+          ? { ...row, periodsPerWeek: value === "" ? "" : Number(value) }
+          : row,
+      ),
+    }));
+  };
+
+  const removeSubjectRow = (subjectId) => {
+    setForm((f) => ({
+      ...f,
+      subjects: f.subjects.filter((row) => row.subject !== subjectId),
     }));
   };
 
   const validate = () => {
     const errs = {};
-    if (!form.academicYear) errs.academicYear = "Academic Year is required";
     if (!form.groupName.trim()) errs.groupName = "Group name is required";
     if (!form.class) errs.class = "Class is required";
     if (form.sections.length === 0)
       errs.sections = "Select at least one section";
-    if (form.subjects.length === 0)
-      errs.subjects = "Select at least one subject";
+    if (form.subjects.length === 0) {
+      errs.subjects = "Add at least one subject";
+    } else if (
+      form.subjects.some((row) => !row.periodsPerWeek || row.periodsPerWeek < 1)
+    ) {
+      errs.subjects = "Every subject needs a valid periods/week (at least 1)";
+    }
     setNameError(errs);
     return Object.keys(errs).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!currentYear) {
+      showToast(
+        "No current academic year set. Set one in Academic Year master first.",
+        "error",
+      );
+      return;
+    }
     if (!validate()) return;
 
     setSubmitting(true);
     try {
+      const payload = { ...form, academicYear: currentYear._id };
       if (editingId) {
-        await updateSubjectGroup(editingId, form);
+        await updateSubjectGroup(editingId, payload);
         showToast("Subject group updated successfully");
       } else {
-        await createSubjectGroup(form);
+        await createSubjectGroup(payload);
         showToast("Subject group created successfully");
       }
       resetForm();
@@ -207,10 +249,10 @@ export default function SubjectGroupList() {
 
   const columns = [
     {
-      field: "academicYear",
-      headerName: "Academic Year",
-      render: (row) => row.academicYear?.name || "—",
-    },
+    field: "academicYear",
+    headerName: "Year",
+    render: (row) => row.academicYear?.name || "—",
+  },
     { field: "groupName", headerName: "Group Name" },
     {
       field: "class",
@@ -241,7 +283,13 @@ export default function SubjectGroupList() {
       field: "subjects",
       headerName: "Subjects",
       render: (row) => (
-        <PillList items={row.subjects?.map((s) => s.subjectName) || []} />
+        <PillList
+          items={
+            row.subjects?.map(
+              (s) => `${s.subject?.subjectName} (${s.periodsPerWeek}/wk)`,
+            ) || []
+          }
+        />
       ),
     },
     {
@@ -268,39 +316,12 @@ export default function SubjectGroupList() {
               </h6>
 
               <form onSubmit={handleSubmit}>
-                <div className="mb-3">
-                  <label className="form-label">
-                    Academic Year <span className="text-danger">*</span>
-                  </label>
-
-                  <select
-                    className={`form-select ${
-                      nameError.academicYear ? "is-invalid" : ""
-                    }`}
-                    value={form.academicYear}
-                    onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        academicYear: e.target.value,
-                      }))
-                    }
-                    disabled={submitting || loadingOptions}
-                  >
-                    <option value="">Select Academic Year</option>
-
-                    {academicYears.map((year) => (
-                      <option key={year._id} value={year._id}>
-                        {year.name}
-                      </option>
-                    ))}
-                  </select>
-
-                  {nameError.academicYear && (
-                    <div className="invalid-feedback d-block">
-                      {nameError.academicYear}
-                    </div>
-                  )}
-                </div>
+                {/* {currentYear && (
+                  <p className="text-muted small mb-3">
+                    Academic Year: <strong>{currentYear.name}</strong>
+                  </p>
+                )} */}
+                <AcademicYearBadge/>
                 <div className="mb-3">
                   <label className="form-label">
                     Name <span className="text-danger">*</span>
@@ -391,9 +412,10 @@ export default function SubjectGroupList() {
                   )}
                 </div>
 
+                {/* Subjects — row builder: pick a subject, add it, set periods/week */}
                 <div className="mb-3">
                   <label className="form-label">
-                    Subject <span className="text-danger">*</span>
+                    Subjects <span className="text-danger">*</span>
                   </label>
 
                   {loadingOptions ? (
@@ -404,29 +426,82 @@ export default function SubjectGroupList() {
                       Master.
                     </div>
                   ) : (
-                    <div className="d-flex flex-column gap-1">
-                      {allSubjects.map((sub) => {
-                        const isChecked = form.subjects.includes(sub._id);
-                        return (
-                          <div className="form-check" key={sub._id}>
-                            <input
-                              className="form-check-input"
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => toggleSubject(sub._id)}
-                              disabled={submitting}
-                              id={`subject-${sub._id}`}
-                            />
-                            <label
-                              className="form-check-label"
-                              htmlFor={`subject-${sub._id}`}
-                            >
+                    <>
+                      <div className="d-flex gap-2 mb-2">
+                        <select
+                          className="form-select form-select-sm"
+                          value={subjectToAdd}
+                          onChange={(e) => setSubjectToAdd(e.target.value)}
+                          disabled={
+                            submitting || subjectsNotYetAdded.length === 0
+                          }
+                        >
+                          <option value="">
+                            {subjectsNotYetAdded.length === 0
+                              ? "All subjects added"
+                              : "Select subject to add"}
+                          </option>
+                          {subjectsNotYetAdded.map((sub) => (
+                            <option key={sub._id} value={sub._id}>
                               {sub.subjectName}
-                            </label>
-                          </div>
-                        );
-                      })}
-                    </div>
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          className="btn btn-outline-primary btn-sm text-nowrap"
+                          onClick={addSubjectRow}
+                          disabled={submitting || !subjectToAdd}
+                        >
+                          <AddIcon fontSize="small" /> Add
+                        </button>
+                      </div>
+
+                      {form.subjects.length > 0 && (
+                        <div className="border rounded-3 p-2">
+                          {form.subjects.map((row) => {
+                            const subj = allSubjects.find(
+                              (s) => s._id === row.subject,
+                            );
+                            return (
+                              <div
+                                key={row.subject}
+                                className="d-flex align-items-center gap-2 py-1"
+                              >
+                                <div className="flex-grow-1 small">
+                                  {subj?.subjectName || "Unknown subject"}
+                                </div>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  className="form-control form-control-sm"
+                                  style={{ width: 70 }}
+                                  value={row.periodsPerWeek}
+                                  onChange={(e) =>
+                                    updatePeriodsPerWeek(
+                                      row.subject,
+                                      e.target.value,
+                                    )
+                                  }
+                                  disabled={submitting}
+                                />
+                                <span className="text-muted small text-nowrap">
+                                  /week
+                                </span>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-danger"
+                                  onClick={() => removeSubjectRow(row.subject)}
+                                  disabled={submitting}
+                                >
+                                  <CloseIcon fontSize="small" />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
                   )}
                   {nameError.subjects && (
                     <div className="text-danger small mt-1">
