@@ -10,7 +10,7 @@ import ResponsiveDataList from "../../components/common/ResponsiveDataList";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import SearchBar from "../../components/common/SearchBar";
 import AddButton from "../../components/common/AddButton";
-import { useToast } from "../../components/common/ToastContext";
+import { useToast } from "../../context/ToastContext";
 import { getStudents, deleteStudent } from "../../services/studentService";
 import { getClasses } from "../../services/classService";
 

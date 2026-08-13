@@ -113,9 +113,9 @@ export default function Login() {
       {/* Right Side - Login Form */}
       <div className="d-flex align-items-center justify-content-center flex-grow-1">
         <div
-          className="shadow rounded-4 border p-5"
-          style={{ width: "85%", maxWidth: 420 }}
-        >
+  className="shadow rounded-4 border p-4 p-md-5"
+  style={{ width: "90%", maxWidth: 420, minWidth: 300 }}
+>
           <div className="text-center mb-3">
             <SchoolIcon color="primary" style={{ fontSize: 60 }} />
             <h4 className="fw-bold mt-1">School ERP</h4>

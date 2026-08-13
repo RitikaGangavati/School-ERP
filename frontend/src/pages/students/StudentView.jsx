@@ -11,7 +11,7 @@ import GroupIcon from "@mui/icons-material/GroupOutlined";
 import HomeIcon from "@mui/icons-material/HomeOutlined";
 
 import MainLayout from "../../components/layout/MainLayout";
-import { useToast } from "../../components/common/ToastContext";
+import { useToast } from "../../context/ToastContext";
 import { getStudentById } from "../../services/studentService";
 import { getImageUrl } from "../../utils/getImageUrl";
 

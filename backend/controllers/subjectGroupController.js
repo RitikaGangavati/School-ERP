@@ -3,7 +3,7 @@ const SubjectGroup = require("../models/subjectGroupModel");
 const populateFields = [
   { path: "class", select: "className" },
   { path: "sections", select: "sectionName" },
-  { path: "subjects.subject", select: "subjectName" },
+  { path: "subjects", select: "subjectName code type status" },
   { path: "academicYear", select: "name" },
 ];
 
@@ -33,10 +33,18 @@ const createSubjectGroup = async (req, res) => {
         message: "Class is required",
       });
     }
+
     if (!academicYear) {
       return res.status(400).json({
         success: false,
         message: "Academic year is required",
+      });
+    }
+
+    if (!Array.isArray(subjects) || subjects.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Select at least one subject",
       });
     }
 
@@ -54,14 +62,17 @@ const createSubjectGroup = async (req, res) => {
       });
     }
 
+    // Remove duplicate subjects
+    const uniqueSubjects = [...new Set(subjects.map(String))];
+
     const group = await SubjectGroup.create({
       academicYear,
       groupName: groupName.trim(),
       class: classId,
-      sections: sections || [],
-      subjects: subjects || [],
-      description,
-      active,
+      sections: Array.isArray(sections) ? sections : [],
+      subjects: uniqueSubjects,
+      description: description || "",
+      active: active !== undefined ? active : true,
     });
 
     const populated = await group.populate(populateFields);
@@ -76,17 +87,16 @@ const createSubjectGroup = async (req, res) => {
       return res.status(409).json({
         success: false,
         message:
-          "A subject group with this name already exists for the selected class",
+          "A subject group with this name already exists for the selected class and academic year.",
       });
     }
 
     if (error.name === "ValidationError") {
       const firstError = Object.values(error.errors)[0]?.message;
+
       return res.status(400).json({
         success: false,
-        message:
-          firstError ||
-          "Please check the subjects — each one needs a subject and periods per week.",
+        message: firstError || "Please check the selected subjects.",
       });
     }
 
@@ -96,6 +106,7 @@ const createSubjectGroup = async (req, res) => {
     });
   }
 };
+
 
 // Get All Subject Groups
 const getAllSubjectGroups = async (req, res) => {
@@ -116,12 +127,12 @@ const getAllSubjectGroups = async (req, res) => {
   }
 };
 
+
 // Get Single Subject Group
 const getSubjectGroupById = async (req, res) => {
   try {
-    const group = await SubjectGroup.findById(req.params.id).populate(
-      populateFields,
-    );
+    const group = await SubjectGroup.findById(req.params.id)
+      .populate(populateFields);
 
     if (!group) {
       return res.status(404).json({
@@ -149,6 +160,7 @@ const getSubjectGroupById = async (req, res) => {
   }
 };
 
+
 // Update Subject Group
 const updateSubjectGroup = async (req, res) => {
   try {
@@ -171,9 +183,31 @@ const updateSubjectGroup = async (req, res) => {
       });
     }
 
-    const newName = groupName?.trim() ?? group.groupName;
-    const newClass = classId ?? group.class;
-    const newAcademicYear = academicYear ?? group.academicYear;
+    const newName =
+      groupName?.trim() ?? group.groupName;
+
+    const newClass =
+      classId ?? group.class;
+
+    const newAcademicYear =
+      academicYear ?? group.academicYear;
+
+    if (!newName) {
+      return res.status(400).json({
+        success: false,
+        message: "Group name is required",
+      });
+    }
+
+    if (
+      subjects !== undefined &&
+      (!Array.isArray(subjects) || subjects.length === 0)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Select at least one subject",
+      });
+    }
 
     const isChanging =
       newName !== group.groupName ||
@@ -199,11 +233,27 @@ const updateSubjectGroup = async (req, res) => {
 
     group.groupName = newName;
     group.class = newClass;
-    if (academicYear !== undefined) group.academicYear = academicYear;
-    if (sections !== undefined) group.sections = sections;
-    if (subjects !== undefined) group.subjects = subjects;
-    if (description !== undefined) group.description = description;
-    if (active !== undefined) group.active = active;
+    group.academicYear = newAcademicYear;
+
+    if (sections !== undefined) {
+      group.sections = Array.isArray(sections)
+        ? sections
+        : [];
+    }
+
+    if (subjects !== undefined) {
+      group.subjects = [
+        ...new Set(subjects.map(String)),
+      ];
+    }
+
+    if (description !== undefined) {
+      group.description = description;
+    }
+
+    if (active !== undefined) {
+      group.active = active;
+    }
 
     await group.save();
 
@@ -226,17 +276,18 @@ const updateSubjectGroup = async (req, res) => {
       return res.status(409).json({
         success: false,
         message:
-          "A subject group with this name already exists for the selected class",
+          "A subject group with this name already exists for the selected class and academic year.",
       });
     }
 
     if (error.name === "ValidationError") {
-      const firstError = Object.values(error.errors)[0]?.message;
+      const firstError =
+        Object.values(error.errors)[0]?.message;
+
       return res.status(400).json({
         success: false,
         message:
-          firstError ||
-          "Please check the subjects — each one needs a subject and periods per week.",
+          firstError || "Please check the selected subjects.",
       });
     }
 
@@ -247,10 +298,12 @@ const updateSubjectGroup = async (req, res) => {
   }
 };
 
+
 // Delete Subject Group
 const deleteSubjectGroup = async (req, res) => {
   try {
-    const group = await SubjectGroup.findByIdAndDelete(req.params.id);
+    const group =
+      await SubjectGroup.findByIdAndDelete(req.params.id);
 
     if (!group) {
       return res.status(404).json({
@@ -277,6 +330,7 @@ const deleteSubjectGroup = async (req, res) => {
     });
   }
 };
+
 
 module.exports = {
   createSubjectGroup,

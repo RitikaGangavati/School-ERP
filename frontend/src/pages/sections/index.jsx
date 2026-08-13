@@ -10,7 +10,7 @@ import ConfirmDialog from "../../components/common/ConfirmDialog";
 import StatusChip from "../../components/common/StatusChip";
 import SearchBar from "../../components/common/SearchBar";
 import RowActions from "../../components/common/RowActions";
-import { useToast } from "../../components/common/ToastContext";
+import { useToast } from "../../context/ToastContext";
 import {
   getSections,
   createSection,

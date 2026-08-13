@@ -17,8 +17,8 @@ export default function MainLayout({ children }) {
   const currentDrawerWidth = isMobile
     ? 0
     : collapsed
-    ? DRAWER_WIDTH_COLLAPSED
-    : DRAWER_WIDTH;
+      ? DRAWER_WIDTH_COLLAPSED
+      : DRAWER_WIDTH;
 
   const handleMenuClick = () => {
     if (isMobile) {
@@ -29,7 +29,7 @@ export default function MainLayout({ children }) {
   };
 
   return (
-    <div className="d-flex" style={{ minHeight: "100vh" }}>
+    <div className="d-flex" style={{ minHeight: "100vh", width: "100%" }}>
       <Navbar onMenuClick={handleMenuClick} drawerWidth={currentDrawerWidth} />
 
       <Sidebar
@@ -43,18 +43,14 @@ export default function MainLayout({ children }) {
       <div
         className="d-flex flex-column flex-grow-1"
         style={{
-          marginLeft: currentDrawerWidth,
+          marginLeft: isMobile ? 0 : currentDrawerWidth,
           minWidth: 0,
-          overflowX: "hidden",
           transition: "margin-left 0.2s ease",
+          width: "100%", // Explicit full width
         }}
       >
-        <div style={{ height: 56 }} /> {/* Navbar spacer */}
-
-        <div className="flex-grow-1 p-3 p-sm-4">
-          {children}
-        </div>
-
+        <div style={{ height: 56, flexShrink: 0 }} /> {/* Navbar spacer */}
+        <main className="flex-grow-1 p-3 p-sm-4">{children}</main>
         <Footer />
       </div>
     </div>

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Accordion } from "react-bootstrap";
 
 import MainLayout from "../../components/layout/MainLayout";
-import { useToast } from "../../components/common/ToastContext";
+import { useToast } from "../../context/ToastContext";
 import { getClasses } from "../../services/classService";
 import { getAcademicYears } from "../../services/academicYearService";
 import { uploadPhoto } from "../../services/uploadService";

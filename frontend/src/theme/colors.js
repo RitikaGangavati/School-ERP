@@ -9,7 +9,7 @@ export const COLORS = {
 
   activeBg: "#ffffff",
   activeText: "#334155",
-  activeAccent: "#4f46e5",
+  activeAccent: "#60a5fa",
 
   hoverBg: "rgba(255,255,255,0.10)",
   divider: "rgba(255,255,255,0.08)",

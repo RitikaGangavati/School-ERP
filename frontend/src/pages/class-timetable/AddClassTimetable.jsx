@@ -7,7 +7,7 @@ import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 
 import MainLayout from "../../components/layout/MainLayout";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
-import { useToast } from "../../components/common/ToastContext";
+import { useToast } from "../../context/ToastContext";
 import { useAcademicYear } from "../../context/AcademicYearContext";
 
 import { getClasses } from "../../services/classService";

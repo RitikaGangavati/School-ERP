@@ -7,7 +7,7 @@ import ConfirmDialog from "../../components/common/ConfirmDialog";
 import SearchBar from "../../components/common/SearchBar";
 import AddButton from "../../components/common/AddButton";
 import RowActions from "../../components/common/RowActions";
-import { useToast } from "../../components/common/ToastContext";
+import { useToast } from "../../context/ToastContext";
 import { getTeachers, deleteTeacher } from "../../services/teacherService";
 
 export default function TeacherList() {

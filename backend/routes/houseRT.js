@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const { protect } = require("../middleware/authMiddleware");
+const { authorize } = require("../middleware/roleMiddleware");
 
 const {
   createHouse,
@@ -13,10 +14,10 @@ const {
 
 router.use(protect);
 
-router.post("/create", createHouse);
-router.get("/list", getAllHouses);
-router.get("/details/:id", getHouseById);
-router.put("/update/:id", updateHouse);
-router.delete("/delete/:id", deleteHouse);
+router.post("/create", authorize("Super Admin", "Admin"), createHouse);
+router.get("/list", authorize("Super Admin", "Admin"), getAllHouses);
+router.get("/details/:id", authorize("Super Admin", "Admin"), getHouseById);
+router.put("/update/:id", authorize("Super Admin", "Admin"), updateHouse);
+router.delete("/delete/:id", authorize("Super Admin", "Admin"), deleteHouse);
 
 module.exports = router;

@@ -101,7 +101,7 @@ export default function Navbar({ onMenuClick, drawerWidth }) {
                   {user ? `${user.firstName} ${user.lastName}` : "Guest User"}
                 </div>
                 <div className="text-muted small text-truncate">
-                  {user?.role || ""}
+                  {user?.role?.roleName|| ""}
                 </div>
               </div>
 

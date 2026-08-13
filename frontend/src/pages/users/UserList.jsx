@@ -9,7 +9,7 @@ import RoleBadge from "../../components/common/RoleBadge";
 import SearchBar from "../../components/common/SearchBar";
 import AddButton from "../../components/common/AddButton";
 import RowActions from "../../components/common/RowActions";
-import { useToast } from "../../components/common/ToastContext";
+import { useToast } from "../../context/ToastContext";
 import { getUsers, deleteUser } from "../../services/userService";
 
 export default function UserList() {

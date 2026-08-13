@@ -26,18 +26,10 @@ const subjectGroupSchema = new mongoose.Schema(
       },
     ],
 
-    subjects: [
+      subjects: [
       {
-        subject: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "Subject",
-          required: true,
-        },
-        periodsPerWeek: {
-          type: Number,
-          required: true,
-          min: 1,
-        },
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Subject",
       },
     ],
 
@@ -59,6 +51,6 @@ const subjectGroupSchema = new mongoose.Schema(
 
 // A group name should be unique within the same class (not globally),
 // since different classes might reuse a name like "Science Group"
-subjectGroupSchema.index({ groupName: 1, class: 1 }, { unique: true });
+subjectGroupSchema.index({ academicYear: 1, groupName: 1, class: 1 }, { unique: true });
 
 module.exports = mongoose.model("SubjectGroup", subjectGroupSchema);

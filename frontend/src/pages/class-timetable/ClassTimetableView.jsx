@@ -6,7 +6,7 @@ import CalendarViewWeekOutlinedIcon from "@mui/icons-material/CalendarViewWeekOu
 import { useNavigate } from "react-router-dom";
 
 import MainLayout from "../../components/layout/MainLayout";
-import { useToast } from "../../components/common/ToastContext";
+import { useToast } from "../../context/ToastContext";
 import { useAcademicYear } from "../../context/AcademicYearContext";
 
 import { getTimetable } from "../../services/timetableService";

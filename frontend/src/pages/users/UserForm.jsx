@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import MainLayout from "../../components/layout/MainLayout";
 import PasswordField from "../../components/common/PasswordField";
-import { useToast } from "../../components/common/ToastContext";
+import { useToast } from "../../context/ToastContext";
 import { getRoles } from "../../services/roleService";
 import {
   getUserById,

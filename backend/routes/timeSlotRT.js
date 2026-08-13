@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { protect } = require("../middleware/authMiddleware");
+const { authorize } = require("../middleware/roleMiddleware");
 
 const {
   createTimeSlot,
@@ -12,10 +13,10 @@ const {
 
 router.use(protect);
 
-router.post("/create", createTimeSlot);
-router.get("/list", getAllTimeSlots);
-router.get("/details/:id", getTimeSlotById);
-router.put("/update/:id", updateTimeSlot);
-router.delete("/delete/:id", deleteTimeSlot);
+router.post("/create", authorize("Super Admin", "Admin"), createTimeSlot);
+router.get("/list", authorize("Super Admin", "Admin"), getAllTimeSlots);
+router.get("/details/:id", authorize("Super Admin", "Admin"), getTimeSlotById);
+router.put("/update/:id", authorize("Super Admin", "Admin"), updateTimeSlot);
+router.delete("/delete/:id", authorize("Super Admin", "Admin"), deleteTimeSlot);
 
 module.exports = router;

@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const { protect } = require("../middleware/authMiddleware");
+const { authorize } = require("../middleware/roleMiddleware");
+
 const {
     createSection,
     getAllSections,
@@ -12,10 +14,10 @@ const {
 router.use(protect);
 
     
-router.post("/create", createSection);
-router.get("/list", getAllSections);
-router.get("/details/:id", getSectionById);
-router.put("/update/:id", updateSection);
-router.delete("/delete/:id", deleteSection);
+router.post("/create", authorize("Super Admin", "Admin"), createSection);
+router.get("/list", authorize("Super Admin", "Admin"), getAllSections);
+router.get("/details/:id", authorize("Super Admin", "Admin"), getSectionById);
+router.put("/update/:id", authorize("Super Admin", "Admin"), updateSection);
+router.delete("/delete/:id", authorize("Super Admin", "Admin"), deleteSection);
 
 module.exports = router;

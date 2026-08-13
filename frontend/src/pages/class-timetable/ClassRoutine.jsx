@@ -11,7 +11,7 @@ import CalendarViewWeekOutlinedIcon from "@mui/icons-material/CalendarViewWeekOu
 
 import MainLayout from "../../components/layout/MainLayout";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
-import { useToast } from "../../components/common/ToastContext";
+import { useToast } from "../../context/ToastContext";
 
 import { getAcademicYears } from "../../services/academicYearService";
 import { getClasses } from "../../services/classService";

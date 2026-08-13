@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { protect } = require("../middleware/authMiddleware");
+const { authorize } = require("../middleware/roleMiddleware");
 const {
   getStudentsForPromotion,
   promoteStudents,
@@ -11,9 +12,10 @@ const {
 
 router.use(protect);
 
-router.get("/students", getStudentsForPromotion); 
-router.post("/promote", promoteStudents);
-router.get("/history/:studentId", getStudentPromotionHistory);
-router.get("/list", getAllPromotions);
+router.get("/students", authorize("Super Admin", "Admin"), getStudentsForPromotion); 
+router.post("/promote", 
+authorize("Super Admin", "Admin"), promoteStudents);
+router.get("/history/:studentId", authorize("Super Admin", "Admin"), getStudentPromotionHistory);
+router.get("/list", authorize("Super Admin", "Admin"), getAllPromotions);
 
 module.exports = router;

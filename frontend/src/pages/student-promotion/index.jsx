@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import MainLayout from "../../components/layout/MainLayout";
-import { useToast } from "../../components/common/ToastContext";
+import { useToast } from "../../context/ToastContext";
 import { useAcademicYear } from "../../context/AcademicYearContext";
 
 import { getAcademicYears } from "../../services/academicYearService";

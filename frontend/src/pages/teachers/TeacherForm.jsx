@@ -4,7 +4,7 @@ import { Nav, Tab } from "react-bootstrap";
 
 import MainLayout from "../../components/layout/MainLayout";
 import PasswordField from "../../components/common/PasswordField";
-import { useToast } from "../../components/common/ToastContext";
+import { useToast } from "../../context/ToastContext";
 import { getSubjects } from "../../services/subjectService";
 import { uploadPhoto } from "../../services/uploadService";
 import { getImageUrl } from "../../utils/getImageUrl";

@@ -1,4 +1,11 @@
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
+
 import { getCurrentAcademicYear } from "../services/academicYearService";
 
 const AcademicYearContext = createContext(null);
@@ -9,14 +16,30 @@ export function AcademicYearProvider({ children }) {
   const [error, setError] = useState("");
 
   const fetchCurrent = useCallback(async () => {
+    const token = localStorage.getItem("token");
+
+    // Don't call API if user is not logged in
+    if (!token) {
+      setCurrentYear(null);
+      setError("");
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError("");
+
     try {
       const res = await getCurrentAcademicYear();
+
       setCurrentYear(res.data.academicYear);
     } catch (err) {
       setCurrentYear(null);
-      setError(err.response?.data?.message || "No current academic year set");
+
+      setError(
+        err.response?.data?.message ||
+          "No current academic year set"
+      );
     } finally {
       setLoading(false);
     }
@@ -27,10 +50,18 @@ export function AcademicYearProvider({ children }) {
   }, [fetchCurrent]);
 
   return (
-    <AcademicYearContext.Provider value={{ currentYear, loading, error, refetch: fetchCurrent }}>
+    <AcademicYearContext.Provider
+      value={{
+        currentYear,
+        loading,
+        error,
+        refetch: fetchCurrent,
+      }}
+    >
       {children}
     </AcademicYearContext.Provider>
   );
 }
 
-export const useAcademicYear = () => useContext(AcademicYearContext);
+export const useAcademicYear = () =>
+  useContext(AcademicYearContext);

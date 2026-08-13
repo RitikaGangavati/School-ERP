@@ -35,6 +35,7 @@ const timeSlotRT = require("./routes/timeSlotRT");
 const timeTableRT = require("./routes/timeTableRT");
 const subjectTeacherRT = require("./routes/subjectTeacherRT")
 const attendanceRT = require("./routes/attendanceRT");
+const subjectWeeklyPeriodRT = require("./routes/subjectWeeklyPeriodRT");
 
 app.use('/api/auth',authRT);
 app.use('/api/roles',roleRT);
@@ -52,10 +53,10 @@ app.use("/api/teachers", teacherRT);
 app.use("/api/class-teachers", classTeacherRT);
 app.use("/api/student-promotion", studentPromotionRT);
 app.use("/api/time-slots", timeSlotRT);
-app.use("/api/timetable", timeTableRT);
+app.use("/api/timetables", timeTableRT);
 app.use("/api/subject-teachers", subjectTeacherRT);
 app.use("/api/attendance", attendanceRT);
-
+app.use("/api/subject-weekly-periods", subjectWeeklyPeriodRT);
 
 //Route test
 app.get("/", (req, res) => {
