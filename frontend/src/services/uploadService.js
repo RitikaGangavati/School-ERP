@@ -8,3 +8,12 @@ export const uploadPhoto = (file, type = "general") => {
     headers: { "Content-Type": "multipart/form-data" },
   });
 };
+
+export const uploadFile = (file, type = "general") => {
+  const formData = new FormData();
+  formData.append("file", file); // must be "file" to match the /file route
+
+  return api.post(`/api/upload/${type}/file`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+};

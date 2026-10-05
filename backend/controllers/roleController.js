@@ -1,185 +1,110 @@
 const Role = require("../models/roleModel");
+const User = require("../models/userModel");
+const asyncHandler = require("../utils/asyncHandler");
+const ApiError = require("../utils/ApiError");
+const sendResponse = require("../utils/ApiResponse");
+const checkDuplicate = require("../utils/checkDuplicate");
+const buildSearchFilter = require("../utils/buildSearchFilter");
+const { getPagination, paginateQuery } = require("../utils/paginate");
 
-// Add Role
-const createRole = async (req, res) => {
-  try {
+const PROTECTED_ROLES = ["Super Admin"]; // roles that can NEVER be deleted/renamed/deactivated
 
-    const { roleName, description, active } = req.body;
+// Create Role
+const createRole = asyncHandler(async (req, res) => {
+  const { roleName, description, active } = req.body;
 
-    if (!roleName) {
-      return res.status(400).json({
-        success: false,
-        message: "Role Name is required",
-      });
-    }
+  await checkDuplicate(Role, { roleName }, "Role already exists");
 
-    const existingRole = await Role.findOne({ roleName });
+  const role = await Role.create({ roleName, description, active });
 
-    if (existingRole) {
-      return res.status(400).json({
-        success: false,
-        message: "Role already exists",
-      });
-    }
-
-    const role = await Role.create({
-      roleName,
-      description,
-      active,
-    });
-
-    res.status(201).json({
-      success: true,
-      message: "Role created successfully",
-      role,
-    });
-
-  } catch (error) {
-
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-
-  }
-};
+  return sendResponse(res, 201, "Role created successfully", { role });
+});
 
 // Get All Roles
-const getAllRoles = async (req, res) => {
+const getAllRoles = asyncHandler(async (req, res) => {
+  const { search, active } = req.query;
 
-  try {
+  const filter = {};
+  if (active !== undefined) filter.active = active === "true";
 
-    const roles = await Role.find().sort({ created_at: -1 });
+  const searchFilter = buildSearchFilter(search, ["roleName", "description"]);
+  if (searchFilter) Object.assign(filter, searchFilter);
 
-    res.status(200).json({
-      success: true,
-      roles,
-    });
+  const pagination = getPagination(req);
 
-  } catch (error) {
+  const { data: roles, pagination: paginationInfo } = await paginateQuery(
+    Role,
+    filter,
+    pagination,
+    { sort: { createdAt: -1 } }
+  );
 
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-
-  }
-
-};
+  return sendResponse(res, 200, "Roles fetched successfully", { roles, pagination: paginationInfo });
+});
 
 // Get Single Role
-const getRoleById = async (req, res) => {
+const getRoleById = asyncHandler(async (req, res) => {
+  const role = await Role.findById(req.params.id);
 
-  try {
-
-    const role = await Role.findById(req.params.id);
-
-    if (!role) {
-      return res.status(404).json({
-        success: false,
-        message: "Role not found",
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      role,
-    });
-
-  } catch (error) {
-
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-
+  if (!role) {
+    throw new ApiError(404, "Role not found");
   }
 
-};
+  return sendResponse(res, 200, "Role fetched successfully", { role });
+});
 
 // Update Role
-const updateRole = async (req, res) => {
+const updateRole = asyncHandler(async (req, res) => {
+  const { roleName, description, active } = req.body;
 
-  try {
-
-    const { roleName, description, active } = req.body;
-
-    const role = await Role.findById(req.params.id);
-
-    if (!role) {
-      return res.status(404).json({
-        success: false,
-        message: "Role not found",
-      });
-    }
-
-    // Check duplicate
-    const duplicateRole = await Role.findOne({
-      roleName,
-      _id: { $ne: req.params.id },
-    });
-
-    if (duplicateRole) {
-      return res.status(400).json({
-        success: false,
-        message: "Role already exists",
-      });
-    }
-
-    role.roleName = roleName;
-    role.description = description;
-    role.active = active;
-
-    await role.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Role updated successfully",
-      role,
-    });
-
-  } catch (error) {
-
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-
+  const role = await Role.findById(req.params.id);
+  if (!role) {
+    throw new ApiError(404, "Role not found");
   }
 
-};
+  if (PROTECTED_ROLES.includes(role.roleName)) {
+    if (roleName && roleName !== role.roleName) {
+      throw new ApiError(403, `Cannot rename protected role "${role.roleName}"`);
+    }
+    if (active === false) {
+      throw new ApiError(403, `Cannot deactivate protected role "${role.roleName}"`);
+    }
+  }
+
+  if (roleName && roleName !== role.roleName) {
+    await checkDuplicate(Role, { roleName }, "Role already exists", role._id);
+    role.roleName = roleName;
+  }
+
+  if (description !== undefined) role.description = description;
+  if (active !== undefined) role.active = active;
+
+  await role.save();
+
+  return sendResponse(res, 200, "Role updated successfully", { role });
+});
 
 // Delete Role
-const deleteRole = async (req, res) => {
+const deleteRole = asyncHandler(async (req, res) => {
+  const role = await Role.findById(req.params.id);
 
-  try {
-
-    const role = await Role.findById(req.params.id);
-
-    if (!role) {
-      return res.status(404).json({
-        success: false,
-        message: "Role not found",
-      });
-    }
-
-    await role.deleteOne();
-
-    res.status(200).json({
-      success: true,
-      message: "Role deleted successfully",
-    });
-
-  } catch (error) {
-
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-
+  if (!role) {
+    throw new ApiError(404, "Role not found");
   }
 
-};
+  if (PROTECTED_ROLES.includes(role.roleName)) {
+    throw new ApiError(403, `"${role.roleName}" is a protected system role and cannot be deleted`);
+  }
+
+  const usersWithRole = await User.countDocuments({ role: role._id, isDeleted: false });
+  if (usersWithRole > 0) {
+    throw new ApiError(400, `Cannot delete role — ${usersWithRole} user(s) are currently assigned to it`);
+  }
+
+  await role.deleteOne();
+
+  return sendResponse(res, 200, "Role deleted successfully");
+});
 
 module.exports = {
   createRole,

@@ -1,82 +1,111 @@
 const Attendance = require("../models/attendanceModel");
 const Student = require("../models/studentModel");
+const AcademicYear = require("../models/academicYearModel");
+const Class = require("../models/classModel");
+const Section = require("../models/sectionModel");
+const asyncHandler = require("../utils/asyncHandler");
+const ApiError = require("../utils/ApiError");
+const sendResponse = require("../utils/ApiResponse");
+const { getPagination, paginateQuery } = require("../utils/paginate");
+const { toDayStart, todayIST } = require("../utils/dateHelpers");
 
-const populateFields = [
-  { path: "student", select: "personal.firstName personal.lastName academic.rollNo academic.admissionNumber" },
-];
+// Validates academicYear/class/section actually exist (exists() fetches only the _id)
+const validateContext = async (academicYear, classId, section) => {
+  const [yearExists, classExists, sectionExists] = await Promise.all([
+    AcademicYear.exists({ _id: academicYear }),
+    Class.exists({ _id: classId }),
+    Section.exists({ _id: section }),
+  ]);
 
-// Get the class roster + any existing attendance for a given date (loads the grid)
-const getAttendanceForDate = async (req, res) => {
-  try {
-    const { academicYear, class: classId, section, date } = req.query;
-
-    if (!academicYear || !classId || !section || !date) {
-      return res.status(400).json({
-        success: false,
-        message: "Academic year, class, section, and date are required",
-      });
-    }
-
-    const students = await Student.find({
-      "academic.academicYear": academicYear,
-      "academic.class": classId,
-      "academic.section": section,
-      "academic.status": "Active",
-    })
-      .select("personal.firstName personal.lastName academic.rollNo academic.admissionNumber")
-      .sort({ "academic.rollNo": 1 });
-
-    const dayStart = new Date(date);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(date);
-    dayEnd.setHours(23, 59, 59, 999);
-
-    const existingRecords = await Attendance.find({
-      student: { $in: students.map((s) => s._id) },
-      date: { $gte: dayStart, $lte: dayEnd },
-    });
-
-    const attendanceMap = {};
-    existingRecords.forEach((rec) => {
-      attendanceMap[rec.student.toString()] = { status: rec.status, remarks: rec.remarks };
-    });
-
-    return res.status(200).json({
-      success: true,
-      students,
-      attendance: attendanceMap,
-    });
-  } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
-  }
+  if (!yearExists) throw new ApiError(404, "Academic year not found");
+  if (!classExists) throw new ApiError(404, "Class not found");
+  if (!sectionExists) throw new ApiError(404, "Section not found");
 };
 
-// Bulk save the whole day's attendance in one go
-const saveAttendance = async (req, res) => {
-  try {
-    const { academicYear, class: classId, section, date, records } = req.body;
+// Get the class roster + any existing attendance for a given date (loads the grid)
+const getAttendanceForDate = asyncHandler(async (req, res) => {
+  const { academicYear, class: classId, section, date } = req.query;
 
-    if (!academicYear || !classId || !section || !date || !Array.isArray(records)) {
-      return res.status(400).json({
-        success: false,
-        message: "Academic year, class, section, date, and records are required",
-      });
-    }
+  await validateContext(academicYear, classId, section);
 
-    const validRecords = records.filter((r) => r.student && r.status);
+  // Block future dates (compared as YYYY-MM-DD strings, in India time)
+  if (date > todayIST()) {
+    throw new ApiError(400, "Cannot view or mark attendance for a future date");
+  }
 
-    if (validRecords.length === 0) {
-      return res.status(400).json({ success: false, message: "No attendance records to save" });
-    }
+  const students = await Student.find({
+    "academic.academicYear": academicYear,
+    "academic.class": classId,
+    "academic.section": section,
+    "academic.status": "Active",
+  })
+    .select("personal.firstName personal.lastName academic.rollNo academic.admissionNumber")
+    .sort({ "academic.rollNo": 1 })
+    .lean();
 
-    const dayStart = new Date(date);
-    dayStart.setHours(0, 0, 0, 0);
+  const existingRecords = await Attendance.find({
+    student: { $in: students.map((s) => s._id) },
+    date: toDayStart(date),
+  })
+    .select("student status remarks")
+    .lean();
 
-    const savedRecords = [];
-    for (const item of validRecords) {
-      const saved = await Attendance.findOneAndUpdate(
-        { student: item.student, date: dayStart },
-        {
+  const attendanceMap = {};
+  existingRecords.forEach((rec) => {
+    attendanceMap[rec.student.toString()] = { status: rec.status, remarks: rec.remarks };
+  });
+
+  return sendResponse(res, 200, "Attendance data fetched successfully", {
+    students,
+    attendance: attendanceMap,
+  });
+});
+
+// Save attendance for the students sent (can be all of them, or just some)
+const saveAttendance = asyncHandler(async (req, res) => {
+  const { academicYear, class: classId, section, date, records } = req.body;
+
+  await validateContext(academicYear, classId, section);
+
+  if (date > todayIST()) {
+    throw new ApiError(400, "Cannot mark attendance for a future date");
+  }
+
+  // If the same student appears twice, the last entry wins
+  const recordByStudent = new Map();
+  records.forEach((r) => recordByStudent.set(r.student, r));
+  const uniqueRecords = [...recordByStudent.values()];
+  const studentIds = uniqueRecords.map((r) => r.student);
+
+  // Every student must exist, be Active, AND belong to the stated class/section/year
+  const validStudents = await Student.find({
+    _id: { $in: studentIds },
+    "academic.academicYear": academicYear,
+    "academic.class": classId,
+    "academic.section": section,
+    "academic.status": "Active",
+  })
+    .select("_id")
+    .lean();
+
+  const validStudentIds = new Set(validStudents.map((s) => s._id.toString()));
+  const invalidIds = studentIds.filter((id) => !validStudentIds.has(id));
+
+  if (invalidIds.length > 0) {
+    throw new ApiError(
+      400,
+      `${invalidIds.length} student(s) are not active members of the selected class/section/year — attendance was not saved`
+    );
+  }
+
+  const dayStart = toDayStart(date);
+
+  // One round trip for all students, instead of one per student
+  const ops = uniqueRecords.map((item) => ({
+    updateOne: {
+      filter: { student: item.student, date: dayStart },
+      update: {
+        $set: {
           academicYear,
           class: classId,
           section,
@@ -84,53 +113,61 @@ const saveAttendance = async (req, res) => {
           remarks: item.remarks || "",
           markedBy: req.user?._id || null,
         },
-        { new: true, upsert: true, runValidators: true }
-      );
-      savedRecords.push(saved);
-    }
+      },
+      upsert: true,
+    },
+  }));
 
-    return res.status(200).json({
-      success: true,
-      message: `Attendance saved for ${savedRecords.length} student(s)`,
-      count: savedRecords.length,
-    });
-  } catch (error) {
-    if (error.name === "ValidationError") {
-      const firstError = Object.values(error.errors)[0]?.message;
-      return res.status(400).json({ success: false, message: firstError || "Invalid attendance data" });
-    }
-    return res.status(500).json({ success: false, message: error.message });
-  }
-};
+  const result = await Attendance.bulkWrite(ops, { ordered: false });
+
+  return sendResponse(res, 200, `Attendance saved for ${uniqueRecords.length} student(s)`, {
+    saved: uniqueRecords.length,
+    created: result.upsertedCount,
+    updated: result.modifiedCount,
+  });
+});
 
 // Get one student's attendance history (for their profile view)
-const getStudentAttendance = async (req, res) => {
-  try {
-    const { studentId } = req.params;
-    const { month, year } = req.query;
+const getStudentAttendance = asyncHandler(async (req, res) => {
+  const { studentId } = req.params;
+  const { month, year } = req.query;
 
-    const filter = { student: studentId };
-
-    if (month && year) {
-      const start = new Date(year, month - 1, 1);
-      const end = new Date(year, month, 0, 23, 59, 59);
-      filter.date = { $gte: start, $lte: end };
-    }
-
-    const records = await Attendance.find(filter).sort({ date: -1 });
-
-    const summary = {
-      Present: records.filter((r) => r.status === "Present").length,
-      Absent: records.filter((r) => r.status === "Absent").length,
-      Late: records.filter((r) => r.status === "Late").length,
-      "Half Day": records.filter((r) => r.status === "Half Day").length,
-      Leave: records.filter((r) => r.status === "Leave").length,
-    };
-
-    return res.status(200).json({ success: true, records, summary });
-  } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+  const student = await Student.findById(studentId).select("_id").lean();
+  if (!student) {
+    throw new ApiError(404, "Student not found");
   }
-};
+
+  const filter = { student: student._id };
+
+  if (month && year) {
+    // UTC month boundaries, matching how attendance days are stored
+    filter.date = {
+      $gte: new Date(Date.UTC(year, month - 1, 1)),
+      $lt: new Date(Date.UTC(year, month, 1)),
+    };
+  }
+
+  const pagination = getPagination(req);
+
+  // Page of records + summary over ALL matching records, in parallel
+  const [{ data: records, pagination: paginationInfo }, statusCounts] = await Promise.all([
+    paginateQuery(Attendance, filter, pagination, { sort: { date: -1 } }),
+    Attendance.aggregate([
+      { $match: filter },
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]),
+  ]);
+
+  const summary = { Present: 0, Absent: 0, Late: 0, "Half Day": 0, Leave: 0 };
+  statusCounts.forEach(({ _id, count }) => {
+    summary[_id] = count;
+  });
+
+  return sendResponse(res, 200, "Attendance history fetched successfully", {
+    records,
+    summary,
+    pagination: paginationInfo,
+  });
+});
 
 module.exports = { getAttendanceForDate, saveAttendance, getStudentAttendance };

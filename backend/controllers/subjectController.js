@@ -1,187 +1,93 @@
 const Subject = require("../models/subjectModel");
+const asyncHandler = require("../utils/asyncHandler");
+const ApiError = require("../utils/ApiError");
+const sendResponse = require("../utils/ApiResponse");
+const checkDuplicate = require("../utils/checkDuplicate");
+const buildSearchFilter = require("../utils/buildSearchFilter");
+const { getPagination, paginateQuery } = require("../utils/paginate");
 
 // Create Subject
-const createSubject = async (req, res) => {
-  try {
-    const { subjectName, subjectCode, subjectType, active } = req.body;
+const createSubject = asyncHandler(async (req, res) => {
+  const { subjectName, subjectCode, subjectType, active } = req.body;
 
-    if (!subjectName || !subjectName.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: "Subject name is required",
-      });
-    }
+  await checkDuplicate(Subject, { subjectName }, "Subject already exists");
 
-    const existing = await Subject.findOne({ subjectName: subjectName.trim() });
+  const subject = await Subject.create({
+    subjectName,
+    subjectCode,
+    subjectType,
+    active,
+  });
 
-    if (existing) {
-      return res.status(409).json({
-        success: false,
-        message: "Subject already exists",
-      });
-    }
-
-    const subject = await Subject.create({
-      subjectName: subjectName.trim(),
-      subjectCode,
-      subjectType,
-      active,
-    });
-
-    return res.status(201).json({
-      success: true,
-      message: "Subject created successfully",
-      subject,
-    });
-  } catch (error) {
-    if (error.code === 11000) {
-      return res.status(409).json({
-        success: false,
-        message: "Subject already exists",
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
+  return sendResponse(res, 201, "Subject created successfully", { subject });
+});
 
 // Get All Subjects
-const getAllSubjects = async (req, res) => {
-  try {
-    const subjects = await Subject.find().sort({ subjectName: 1 });
+const getAllSubjects = asyncHandler(async (req, res) => {
+  const { search, active } = req.query;
 
-    return res.status(200).json({
-      success: true,
-      subjects,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
+  const filter = {};
+  if (active !== undefined) filter.active = active === "true";
+
+  const searchFilter = buildSearchFilter(search, ["subjectName", "subjectCode", "subjectType"]);
+  if (searchFilter) Object.assign(filter, searchFilter);
+
+  const pagination = getPagination(req);
+
+  const { data: subjects, pagination: paginationInfo } = await paginateQuery(
+    Subject,
+    filter,
+    pagination,
+    { sort: { subjectName: 1 } }
+  );
+
+  return sendResponse(res, 200, "Subjects fetched successfully", { subjects, pagination: paginationInfo });
+});
 
 // Get Single Subject
-const getSubjectById = async (req, res) => {
-  try {
-    const subject = await Subject.findById(req.params.id);
+const getSubjectById = asyncHandler(async (req, res) => {
+  const subject = await Subject.findById(req.params.id);
 
-    if (!subject) {
-      return res.status(404).json({
-        success: false,
-        message: "Subject not found",
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      subject,
-    });
-  } catch (error) {
-    if (error.name === "CastError") {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid subject ID",
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+  if (!subject) {
+    throw new ApiError(404, "Subject not found");
   }
-};
+
+  return sendResponse(res, 200, "Subject fetched successfully", { subject });
+});
 
 // Update Subject
-const updateSubject = async (req, res) => {
-  try {
-    const { subjectName, subjectCode, subjectType, active } = req.body;
+const updateSubject = asyncHandler(async (req, res) => {
+  const { subjectName, subjectCode, subjectType, active } = req.body;
 
-    const subject = await Subject.findById(req.params.id);
-
-    if (!subject) {
-      return res.status(404).json({
-        success: false,
-        message: "Subject not found",
-      });
-    }
-
-    if (subjectName && subjectName.trim() !== subject.subjectName) {
-      const existing = await Subject.findOne({
-        subjectName: subjectName.trim(),
-        _id: { $ne: subject._id },
-      });
-
-      if (existing) {
-        return res.status(409).json({
-          success: false,
-          message: "Subject name already in use",
-        });
-      }
-
-      subject.subjectName = subjectName.trim();
-    }
-
-    if (subjectCode !== undefined) subject.subjectCode = subjectCode;
-    if (subjectType !== undefined) subject.subjectType = subjectType;
-    if (active !== undefined) subject.active = active;
-
-    await subject.save();
-
-    return res.status(200).json({
-      success: true,
-      message: "Subject updated successfully",
-      subject,
-    });
-  } catch (error) {
-    if (error.name === "CastError") {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid subject ID",
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+  const subject = await Subject.findById(req.params.id);
+  if (!subject) {
+    throw new ApiError(404, "Subject not found");
   }
-};
+
+  if (subjectName && subjectName !== subject.subjectName) {
+    await checkDuplicate(Subject, { subjectName }, "Subject name already in use", subject._id);
+    subject.subjectName = subjectName;
+  }
+
+  if (subjectCode !== undefined) subject.subjectCode = subjectCode;
+  if (subjectType !== undefined) subject.subjectType = subjectType;
+  if (active !== undefined) subject.active = active;
+
+  await subject.save();
+
+  return sendResponse(res, 200, "Subject updated successfully", { subject });
+});
 
 // Delete Subject
-const deleteSubject = async (req, res) => {
-  try {
-    const subject = await Subject.findByIdAndDelete(req.params.id);
+const deleteSubject = asyncHandler(async (req, res) => {
+  const subject = await Subject.findByIdAndDelete(req.params.id);
 
-    if (!subject) {
-      return res.status(404).json({
-        success: false,
-        message: "Subject not found",
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "Subject deleted successfully",
-    });
-  } catch (error) {
-    if (error.name === "CastError") {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid subject ID",
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+  if (!subject) {
+    throw new ApiError(404, "Subject not found");
   }
-};
+
+  return sendResponse(res, 200, "Subject deleted successfully");
+});
 
 module.exports = {
   createSubject,

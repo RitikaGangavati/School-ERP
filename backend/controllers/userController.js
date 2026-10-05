@@ -1,227 +1,219 @@
 const User = require("../models/userModel");
 const Role = require("../models/roleModel");
+const asyncHandler = require("../utils/asyncHandler");
+const ApiError = require("../utils/ApiError");
+const sendResponse = require("../utils/ApiResponse");
+const checkDuplicate = require("../utils/checkDuplicate");
+const buildSearchFilter = require("../utils/buildSearchFilter");
+const { getPagination, paginateQuery } = require("../utils/paginate");
 
-// Create User (admin-only, via User Master)
-const createUser = async (req, res) => {
-  try {
-    const { firstName, lastName, email, password, mobile, role, active } =
-      req.body;
+// Create User
+const createUser = asyncHandler(async (req, res) => {
+  const { firstName, lastName, email, password, mobile, role, active } =
+    req.body;
 
-    // Validation
-    if (!firstName || !lastName || !email || !password || !mobile || !role) {
-      return res.status(400).json({
-        success: false,
-        message: "Please fill all required fields",
-      });
-    }
+  await checkDuplicate(User, { email }, "Email already exists");
 
-    // Check existing email
-    const existingUser = await User.findOne({
-      email: email.toLowerCase().trim(),
-    });
-
-    if (existingUser) {
-      return res.status(409).json({
-        success: false,
-        message: "Email already exists",
-      });
-    }
-
-    const roleData = await Role.findById(role);
-
-    if (!roleData) {
-      return res.status(404).json({
-        success: false,
-        message: "Role not found",
-      });
-    }
-    // Create user — password gets hashed automatically via the pre("save") hook
-    const user = await User.create({
-      firstName,
-      lastName,
-      email: email.toLowerCase().trim(),
-      password,
-      mobile,
-      role: roleData._id,
-      active,
-    });
-
-    const userData = user.toObject();
-    delete userData.password;
-
-    return res.status(201).json({
-      success: true,
-      message: "User created successfully",
-      user: user,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+  const roleData = await Role.findById(role);
+  if (!roleData) {
+    throw new ApiError(404, "Role not found");
   }
-};
+
+  const user = await User.create({
+    firstName,
+    lastName,
+    email,
+    password,
+    mobile,
+    role: roleData._id,
+    active,
+  });
+
+  const userData = user.toObject();
+  delete userData.password;
+
+  return sendResponse(res, 201, "User created successfully", {
+    user: userData,
+  });
+});
 
 // Get All Users
-const getAllUsers = async (req, res) => {
-  try {
-    const users = await User.find()
-      .populate("role", "roleName")
-      .select("-password")
-      .sort({ createdAt: -1 });
+const getAllUsers = asyncHandler(async (req, res) => {
+  const { search, role } = req.query;
 
-    return res.status(200).json({
-      success: true,
-      users,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
+  const filter = { isDeleted: false };
+  if (role) filter.role = role;
+
+  const searchFilter = buildSearchFilter(search, [
+    "firstName",
+    "lastName",
+    "email",
+  ]);
+  if (searchFilter) Object.assign(filter, searchFilter);
+
+  const pagination = getPagination(req);
+
+  const { data: users, pagination: paginationInfo } = await paginateQuery(
+    User,
+    filter,
+    pagination,
+    {
+      populate: { path: "role", select: "roleName" },
+      sort: { createdAt: -1 },
+      select: "-password",
+    },
+  );
+
+  return sendResponse(res, 200, "Users fetched successfully", {
+    users,
+    pagination: paginationInfo,
+  });
+});
 
 // Get Single User
-const getUserById = async (req, res) => {
-  try {
-    const user = await User.findById(req.params.id)
-      .populate("role", "roleName")
-      .select("-password");
+const getUserById = asyncHandler(async (req, res) => {
+  const user = await User.findOne({ _id: req.params.id, isDeleted: false })
+    .populate("role", "roleName")
+    .select("-password");
 
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      user,
-    });
-  } catch (error) {
-    if (error.name === "CastError") {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid user ID",
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+  if (!user) {
+    throw new ApiError(404, "User not found");
   }
-};
 
-// Update User (details + role + active status — NOT password)
-const updateUser = async (req, res) => {
-  try {
-    const { firstName, lastName, email, mobile, role, active } = req.body;
+  return sendResponse(res, 200, "User fetched successfully", { user });
+});
 
-    const user = await User.findById(req.params.id);
+// Update User
+const updateUser = asyncHandler(async (req, res) => {
+  const { firstName, lastName, email, mobile, role, active } = req.body;
 
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    // Check email uniqueness only if it's being changed
-    if (email && email.toLowerCase().trim() !== user.email) {
-      const existingUser = await User.findOne({
-        email: email.toLowerCase().trim(),
-      });
-
-      if (existingUser) {
-        return res.status(409).json({
-          success: false,
-          message: "Email already in use",
-        });
-      }
-
-      user.email = email.toLowerCase().trim();
-    }
-
-    if (firstName !== undefined) user.firstName = firstName;
-    if (lastName !== undefined) user.lastName = lastName;
-    if (mobile !== undefined) user.mobile = mobile;
-    if (role) {
-      const roleData = await Role.findById(role);
-
-      if (!roleData) {
-        return res.status(404).json({
-          success: false,
-          message: "Role not found",
-        });
-      }
-
-      user.role = roleData._id;
-    }
-    if (active !== undefined) user.active = active;
-
-    await user.save();
-
-    const userData = user.toObject();
-    delete userData.password;
-
-    return res.status(200).json({
-      success: true,
-      message: "User updated successfully",
-      user: userData,
-    });
-  } catch (error) {
-    if (error.name === "CastError") {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid user ID",
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+  const user = await User.findById(req.params.id);
+  if (!user) {
+    throw new ApiError(404, "User not found");
   }
-};
 
-// Delete User
-const deleteUser = async (req, res) => {
-  try {
-    const user = await User.findByIdAndDelete(req.params.id);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "User deleted successfully",
-    });
-  } catch (error) {
-    if (error.name === "CastError") {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid user ID",
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+  if (email && email !== user.email) {
+    await checkDuplicate(User, { email }, "Email already in use", user._id);
+    user.email = email;
   }
-};
+
+  if (firstName !== undefined) user.firstName = firstName;
+  if (lastName !== undefined) user.lastName = lastName;
+  if (mobile !== undefined) user.mobile = mobile;
+
+  if (role !== undefined) {
+    const roleData = await Role.findById(role);
+    if (!roleData) {
+      throw new ApiError(404, "Role not found");
+    }
+    user.role = roleData._id;
+  }
+
+  if (active !== undefined) user.active = active;
+
+  await user.save();
+
+  const userData = user.toObject();
+  delete userData.password;
+
+  return sendResponse(res, 200, "User updated successfully", {
+    user: userData,
+  });
+});
+
+// Soft Delete User (default — recoverable)
+const softDeleteUser = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  if (user.isDeleted) {
+    throw new ApiError(400, "User is already deleted");
+  }
+
+  user.isDeleted = true;
+  user.deletedAt = new Date();
+  user.active = false;
+  await user.save();
+
+  return sendResponse(res, 200, "User deleted successfully");
+});
+
+// Restore a soft-deleted user
+const restoreUser = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  if (!user.isDeleted) {
+    throw new ApiError(400, "User is not deleted");
+  }
+
+  user.isDeleted = false;
+  user.deletedAt = null;
+  user.active = true;
+  await user.save();
+
+  const userData = user.toObject();
+  delete userData.password;
+
+  return sendResponse(res, 200, "User restored successfully", {
+    user: userData,
+  });
+});
+
+// Permanent Delete (Super Admin only — irreversible)
+const permanentDeleteUser = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  if (!user.isDeleted) {
+    throw new ApiError(
+      400,
+      "User must be soft-deleted before permanent deletion",
+    );
+  }
+
+  await User.findByIdAndDelete(req.params.id);
+
+  return sendResponse(res, 200, "User permanently deleted");
+});
+
+// Get Soft Deleted Users
+const getDeletedUsers = asyncHandler(async (req, res) => {
+  const pagination = getPagination(req);
+
+  const { data: users, pagination: paginationInfo } = await paginateQuery(
+    User,
+    { isDeleted: true },
+    pagination,
+    {
+      populate: { path: "role", select: "roleName" },
+      sort: { deletedAt: -1 },
+      select: "-password",
+    },
+  );
+
+  return sendResponse(res, 200, "Deleted users fetched successfully", {
+    users,
+    pagination: paginationInfo,
+  });
+});
 
 module.exports = {
   createUser,
   getAllUsers,
   getUserById,
   updateUser,
-  deleteUser,
+  softDeleteUser,
+  restoreUser,
+  permanentDeleteUser,
+  getDeletedUsers,
 };

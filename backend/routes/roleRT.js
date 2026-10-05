@@ -3,6 +3,13 @@ const router = express.Router();
 
 const { protect } = require("../middleware/authMiddleware");
 const { authorize } = require("../middleware/roleMiddleware");
+const { validate } = require("../middleware/validationMiddleware");
+
+const {
+  createRoleSchema,
+  updateRoleSchema,
+  idParamSchema,
+} = require("../validators/roleValidator");
 
 const {
   createRole,
@@ -14,10 +21,37 @@ const {
 
 router.use(protect);
 
-router.post("/create", authorize("Super Admin", "Admin"), createRole);
-router.get("/list", authorize("Super Admin", "Admin"), getAllRoles);
-router.get("/details/:id", authorize("Super Admin", "Admin"), getRoleById);
-router.put("/update/:id", authorize("Super Admin", "Admin"), updateRole);
-router.delete("/delete/:id", authorize("Super Admin", "Admin"), deleteRole);
+router.post(
+  "/create",
+  authorize("Super Admin", "Admin"),
+  validate(createRoleSchema, "body"),
+  createRole,
+);
+router.get(
+  "/list", 
+  authorize("Super Admin", "Admin"), 
+  getAllRoles);
+
+router.get(
+  "/details/:id",
+  authorize("Super Admin", "Admin"),
+  validate(idParamSchema, "params"),
+  getRoleById,
+);
+
+router.put(
+  "/update/:id",
+  authorize("Super Admin", "Admin"),
+  validate(idParamSchema, "params"),
+  validate(updateRoleSchema, "body"),
+  updateRole,
+);
+
+router.delete(
+  "/delete/:id",
+  authorize("Super Admin", "Admin"),
+  validate(idParamSchema, "params"),
+  deleteRole,
+);
 
 module.exports = router;

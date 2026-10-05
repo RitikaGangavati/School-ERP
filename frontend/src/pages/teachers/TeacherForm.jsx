@@ -402,7 +402,7 @@ export default function TeacherForm() {
                       <label className="form-check-label" htmlFor="teacherActiveSwitch">
                         {form.active ? "Active" : "Inactive"}
                       </label>
-                    </div>
+                   </div>
                   </Tab.Pane>
                 </Tab.Content>
               </Tab.Container>

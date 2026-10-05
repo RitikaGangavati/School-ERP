@@ -144,4 +144,12 @@ const studentSchema = new mongoose.Schema(
 // admissionNumber must be unique — since it's nested, enforce via a separate index
 studentSchema.index({ "academic.admissionNumber": 1 }, { unique: true });
 
+studentSchema.index({
+  "academic.academicYear": 1,
+  "academic.class": 1,
+  "academic.section": 1,
+  "academic.status": 1,
+  "academic.rollNo": 1,
+});
+
 module.exports = mongoose.model("Student", studentSchema);

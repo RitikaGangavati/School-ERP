@@ -6,7 +6,7 @@ import MainLayout from "../../components/layout/MainLayout";
 import { useToast } from "../../context/ToastContext";
 import { getClasses } from "../../services/classService";
 import { getAcademicYears } from "../../services/academicYearService";
-import { uploadPhoto } from "../../services/uploadService";
+import { uploadPhoto, uploadFile } from "../../services/uploadService";
 import { getCategories } from "../../services/categoryService";
 import { getHouses } from "../../services/houseService";
 import {
@@ -15,7 +15,14 @@ import {
   updateStudent,
 } from "../../services/studentService";
 
-const SECTIONS = ["personal", "academic", "parent", "address", "health", "documents"];
+const SECTIONS = [
+  "personal",
+  "academic",
+  "parent",
+  "address",
+  "health",
+  "documents",
+];
 const SECTION_LABELS = {
   personal: "👤 Personal Details",
   academic: "🎓 Academic Details",
@@ -33,7 +40,7 @@ const emptyForm = {
     dob: "",
     birthPlace: "",
     gender: "",
-    mobileNumber: "",
+    mobile: "",
     email: "",
     aadhaarNo: "",
     religion: "",
@@ -152,6 +159,13 @@ export default function StudentForm() {
       try {
         const res = await getStudentById(id);
         const s = res.data.student;
+
+        // Convert documents array [{name, file}] back into the flat object the form uses
+        const documentsObj = { ...emptyForm.documents };
+        (s.documents || []).forEach((doc) => {
+          if (doc.name in documentsObj) documentsObj[doc.name] = doc.file;
+        });
+
         setForm({
           personal: {
             ...emptyForm.personal,
@@ -171,7 +185,7 @@ export default function StudentForm() {
           health: { ...emptyForm.health, ...(s.health || {}) },
           parent: { ...emptyForm.parent, ...(s.parent || {}) },
           address: { ...emptyForm.address, ...(s.address || {}) },
-          documents: { ...emptyForm.documents, ...(s.documents || {}) },
+          documents: documentsObj, // ← use the converted object
           active: s.active,
         });
       } catch (err) {
@@ -309,6 +323,25 @@ export default function StudentForm() {
     }
   };
 
+  const handleFileUpload = (group, field) => async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploadingField(field);
+    try {
+      const res = await uploadFile(file, "students");
+      setForm((prev) => ({
+        ...prev,
+        [group]: { ...prev[group], [field]: res.data.url },
+      }));
+      showToast("File uploaded");
+    } catch (err) {
+      showToast(err.response?.data?.message || "File upload failed", "error");
+    } finally {
+      setUploadingField(null);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -320,24 +353,38 @@ export default function StudentForm() {
     setFieldErrors(allErrs);
 
     if (Object.keys(allErrs).length > 0) {
-      // Expand every section that has an error so the user can see them
       const sectionsWithErrors = [
         ...new Set(Object.keys(allErrs).map((f) => FIELD_SECTION[f])),
       ];
-      setOpenSections((prev) => [
-        ...new Set([...prev, ...sectionsWithErrors]),
-      ]);
+      setOpenSections((prev) => [...new Set([...prev, ...sectionsWithErrors])]);
       showToast("Please fix the highlighted fields", "error");
       return;
     }
 
     setSubmitting(true);
     try {
+      const documentsArray = Object.entries(form.documents)
+        .filter(([, file]) => file)
+        .map(([name, file]) => ({ name, file }));
+
+      const payload = {
+        ...form,
+        personal: {
+          ...form.personal,
+          category: form.personal.category || null,
+        },
+        academic: {
+          ...form.academic,
+          house: form.academic.house || null,
+        },
+        documents: documentsArray,
+      };
+
       if (isEdit) {
-        await updateStudent(id, form);
+        await updateStudent(id, payload);
         showToast("Student updated successfully");
       } else {
-        await createStudent(form);
+        await createStudent(payload);
         showToast("Student created successfully");
       }
       navigate("/students");
@@ -496,8 +543,7 @@ export default function StudentForm() {
 
                               <div className="col-md-4 mb-3">
                                 <label className="form-label">
-                                  Gender{" "}
-                                  <span className="text-danger">*</span>
+                                  Gender <span className="text-danger">*</span>
                                 </label>
                                 <select
                                   className={`form-select ${fieldErrors.gender ? "is-invalid" : ""}`}
@@ -538,15 +584,13 @@ export default function StudentForm() {
 
                             <div className="row">
                               <div className="col-md-4 mb-3">
-                                <label className="form-label">
-                                  Mobile Number
-                                </label>
+                                <label className="form-label">Mobile</label>
                                 <input
                                   className="form-control"
-                                  value={form.personal.mobileNumber}
+                                  value={form.personal.mobile}
                                   onChange={handleNestedChange(
                                     "personal",
-                                    "mobileNumber",
+                                    "mobile",
                                   )}
                                   disabled={submitting}
                                 />
@@ -583,9 +627,7 @@ export default function StudentForm() {
 
                             <div className="row">
                               <div className="col-md-4 mb-3">
-                                <label className="form-label">
-                                  Religion
-                                </label>
+                                <label className="form-label">Religion</label>
                                 <input
                                   className="form-control"
                                   value={form.personal.religion}
@@ -597,9 +639,7 @@ export default function StudentForm() {
                                 />
                               </div>
                               <div className="col-md-4 mb-3">
-                                <label className="form-label">
-                                  Category
-                                </label>
+                                <label className="form-label">Category</label>
                                 <select
                                   className="form-select"
                                   value={form.personal.category}
@@ -618,9 +658,7 @@ export default function StudentForm() {
                                 </select>
                               </div>
                               <div className="col-md-4 mb-3">
-                                <label className="form-label">
-                                  Caste Name
-                                </label>
+                                <label className="form-label">Caste Name</label>
                                 <input
                                   className="form-control"
                                   value={form.personal.casteName}
@@ -722,8 +760,7 @@ export default function StudentForm() {
 
                               <div className="col-md-3 mb-3">
                                 <label className="form-label">
-                                  Class{" "}
-                                  <span className="text-danger">*</span>
+                                  Class <span className="text-danger">*</span>
                                 </label>
                                 <select
                                   className={`form-select ${fieldErrors.class ? "is-invalid" : ""}`}
@@ -752,8 +789,7 @@ export default function StudentForm() {
                             <div className="row">
                               <div className="col-md-3 mb-3">
                                 <label className="form-label">
-                                  Section{" "}
-                                  <span className="text-danger">*</span>
+                                  Section <span className="text-danger">*</span>
                                 </label>
                                 <select
                                   className={`form-select ${fieldErrors.section ? "is-invalid" : ""}`}
@@ -783,9 +819,7 @@ export default function StudentForm() {
                               </div>
 
                               <div className="col-md-3 mb-3">
-                                <label className="form-label">
-                                  Roll No.
-                                </label>
+                                <label className="form-label">Roll No.</label>
                                 <input
                                   className="form-control"
                                   value={form.academic.rollNo}
@@ -867,9 +901,7 @@ export default function StudentForm() {
 
                         {section === "parent" && (
                           <>
-                            <h6 className="fw-bold mb-3">
-                              Father's Details
-                            </h6>
+                            <h6 className="fw-bold mb-3">Father's Details</h6>
                             <div className="row">
                               <div className="col-md-4 mb-3">
                                 <label className="form-label">
@@ -915,9 +947,7 @@ export default function StudentForm() {
                               </div>
                             </div>
 
-                            <h6 className="fw-bold mb-3">
-                              Mother's Details
-                            </h6>
+                            <h6 className="fw-bold mb-3">Mother's Details</h6>
                             <div className="row">
                               <div className="col-md-4 mb-3">
                                 <label className="form-label">
@@ -964,9 +994,7 @@ export default function StudentForm() {
                             </div>
 
                             <hr />
-                            <h6 className="fw-bold mb-3">
-                              Guardian Details
-                            </h6>
+                            <h6 className="fw-bold mb-3">Guardian Details</h6>
                             <div className="row">
                               <div className="col-md-3 mb-3">
                                 <label className="form-label">
@@ -1238,9 +1266,7 @@ export default function StudentForm() {
 
                             <div className="row">
                               <div className="col-md-6 mb-3">
-                                <label className="form-label">
-                                  Allergies
-                                </label>
+                                <label className="form-label">Allergies</label>
                                 <textarea
                                   className="form-control"
                                   rows={2}
@@ -1253,9 +1279,7 @@ export default function StudentForm() {
                                 />
                               </div>
                               <div className="col-md-6 mb-3">
-                                <label className="form-label">
-                                  Disability
-                                </label>
+                                <label className="form-label">Disability</label>
                                 <textarea
                                   className="form-control"
                                   rows={2}
@@ -1343,9 +1367,7 @@ export default function StudentForm() {
                                   }
                                 />
                                 {uploadingField === "fatherPhoto" && (
-                                  <div className="form-text">
-                                    Uploading...
-                                  </div>
+                                  <div className="form-text">Uploading...</div>
                                 )}
                                 {form.parent.fatherPhoto && (
                                   <img
@@ -1379,9 +1401,7 @@ export default function StudentForm() {
                                   }
                                 />
                                 {uploadingField === "motherPhoto" && (
-                                  <div className="form-text">
-                                    Uploading...
-                                  </div>
+                                  <div className="form-text">Uploading...</div>
                                 )}
                                 {form.parent.motherPhoto && (
                                   <img
@@ -1415,9 +1435,7 @@ export default function StudentForm() {
                                   }
                                 />
                                 {uploadingField === "guardianPhoto" && (
-                                  <div className="form-text">
-                                    Uploading...
-                                  </div>
+                                  <div className="form-text">Uploading...</div>
                                 )}
                                 {form.parent.guardianPhoto && (
                                   <img
@@ -1443,8 +1461,9 @@ export default function StudentForm() {
                                 </label>
                                 <input
                                   type="file"
+                                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                                   className="form-control"
-                                  onChange={handlePhotoUpload(
+                                  onChange={handleFileUpload(
                                     "documents",
                                     "birthCertificate",
                                   )}
@@ -1454,9 +1473,7 @@ export default function StudentForm() {
                                   }
                                 />
                                 {uploadingField === "birthCertificate" && (
-                                  <div className="form-text">
-                                    Uploading...
-                                  </div>
+                                  <div className="form-text">Uploading...</div>
                                 )}
                                 {form.documents.birthCertificate && (
                                   <a
@@ -1476,8 +1493,9 @@ export default function StudentForm() {
                                 </label>
                                 <input
                                   type="file"
+                                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                                   className="form-control"
-                                  onChange={handlePhotoUpload(
+                                  onChange={handleFileUpload(
                                     "documents",
                                     "transferCertificate",
                                   )}
@@ -1486,11 +1504,8 @@ export default function StudentForm() {
                                     uploadingField === "transferCertificate"
                                   }
                                 />
-                                {uploadingField ===
-                                  "transferCertificate" && (
-                                  <div className="form-text">
-                                    Uploading...
-                                  </div>
+                                {uploadingField === "transferCertificate" && (
+                                  <div className="form-text">Uploading...</div>
                                 )}
                                 {form.documents.transferCertificate && (
                                   <a
@@ -1505,13 +1520,12 @@ export default function StudentForm() {
                               </div>
 
                               <div className="col-md-4 mb-3">
-                                <label className="form-label">
-                                  Aadhaar
-                                </label>
+                                <label className="form-label">Aadhaar</label>
                                 <input
                                   type="file"
+                                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                                   className="form-control"
-                                  onChange={handlePhotoUpload(
+                                  onChange={handleFileUpload(
                                     "documents",
                                     "aadhaarDoc",
                                   )}
@@ -1521,9 +1535,7 @@ export default function StudentForm() {
                                   }
                                 />
                                 {uploadingField === "aadhaarDoc" && (
-                                  <div className="form-text">
-                                    Uploading...
-                                  </div>
+                                  <div className="form-text">Uploading...</div>
                                 )}
                                 {form.documents.aadhaarDoc && (
                                   <a
@@ -1538,25 +1550,21 @@ export default function StudentForm() {
                               </div>
 
                               <div className="col-md-4 mb-3">
-                                <label className="form-label">
-                                  Marks Card
-                                </label>
+                                <label className="form-label">Marks Card</label>
                                 <input
                                   type="file"
+                                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                                   className="form-control"
-                                  onChange={handlePhotoUpload(
+                                  onChange={handleFileUpload(
                                     "documents",
                                     "marksCard",
                                   )}
                                   disabled={
-                                    submitting ||
-                                    uploadingField === "marksCard"
+                                    submitting || uploadingField === "marksCard"
                                   }
                                 />
                                 {uploadingField === "marksCard" && (
-                                  <div className="form-text">
-                                    Uploading...
-                                  </div>
+                                  <div className="form-text">Uploading...</div>
                                 )}
                                 {form.documents.marksCard && (
                                   <a
@@ -1574,8 +1582,9 @@ export default function StudentForm() {
                                 <label className="form-label">Others</label>
                                 <input
                                   type="file"
+                                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                                   className="form-control"
-                                  onChange={handlePhotoUpload(
+                                  onChange={handleFileUpload(
                                     "documents",
                                     "others",
                                   )}
@@ -1584,9 +1593,7 @@ export default function StudentForm() {
                                   }
                                 />
                                 {uploadingField === "others" && (
-                                  <div className="form-text">
-                                    Uploading...
-                                  </div>
+                                  <div className="form-text">Uploading...</div>
                                 )}
                                 {form.documents.others && (
                                   <a

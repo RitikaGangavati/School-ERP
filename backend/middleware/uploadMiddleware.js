@@ -1,40 +1,21 @@
 const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
 
-const baseUploadDir = path.join(__dirname, "..", "uploads");
+const IMAGE_MIME = ["image/jpeg", "image/png", "image/webp"];
+const DOC_MIME = [
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-   const type = req.params.type || "general";
-    const uploadDir = path.join(baseUploadDir, type);
+const makeUploader = (allowed, maxMB, errMsg) =>
+  multer({
+    storage: multer.memoryStorage(),
+    fileFilter: (req, file, cb) =>
+      allowed.includes(file.mimetype) ? cb(null, true) : cb(new Error(errMsg), false),
+    limits: { fileSize: maxMB * 1024 * 1024 },
+  });
 
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
+const uploadImage = makeUploader(IMAGE_MIME, 5, "Only JPEG, PNG or WEBP images are allowed");
+const uploadDoc = makeUploader(DOC_MIME, 10, "Only PDF, DOC or DOCX files are allowed");
 
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    cb(null, `${uniqueSuffix}${ext}`);
-  },
-});
-
-const fileFilter = (req, file, cb) => {
-  const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
-  if (allowedTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error("Only JPEG, PNG, or WEBP images are allowed"), false);
-  }
-};
-
-const upload = multer({
-  storage,
-  fileFilter,
- limits: { fileSize: 5 * 1024 * 1024 }, 
-});
-
-module.exports = upload;
+module.exports = { uploadImage, uploadDoc };

@@ -1,190 +1,95 @@
 const House = require("../models/houseModel");
+const Student = require("../models/studentModel");
+const asyncHandler = require("../utils/asyncHandler");
+const ApiError = require("../utils/ApiError");
+const sendResponse = require("../utils/ApiResponse");
+const checkDuplicate = require("../utils/checkDuplicate");
+const buildSearchFilter = require("../utils/buildSearchFilter");
+const { getPagination, paginateQuery } = require("../utils/paginate");
 
 // Create House
-const createHouse = async (req, res) => {
-  try {
-    const { houseName, description, active } = req.body;
+const createHouse = asyncHandler(async (req, res) => {
+  const { houseName, description, active } = req.body;
 
-    if (!houseName || !houseName.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: "House name is required",
-      });
-    }
+  await checkDuplicate(House, { houseName }, "House already exists");
 
-    const existing = await House.findOne({
-      houseName: houseName.trim(),
-    });
+  const house = await House.create({ houseName, description, active });
 
-    if (existing) {
-      return res.status(409).json({
-        success: false,
-        message: "House already exists",
-      });
-    }
-
-    const house = await House.create({
-      houseName: houseName.trim(),
-      description,
-      active,
-    });
-
-    return res.status(201).json({
-      success: true,
-      message: "House created successfully",
-      house,
-    });
-  } catch (error) {
-    if (error.code === 11000) {
-      return res.status(409).json({
-        success: false,
-        message: "House already exists",
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
+  return sendResponse(res, 201, "House created successfully", { house });
+});
 
 // Get All Houses
-const getAllHouses = async (req, res) => {
-  try {
-    const houses = await House.find().sort({ houseName: 1 });
+const getAllHouses = asyncHandler(async (req, res) => {
+  const { search, active } = req.query;
 
-    return res.status(200).json({
-      success: true,
-      houses,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
+  const filter = {};
+  if (active !== undefined) filter.active = active === "true";
+
+  const searchFilter = buildSearchFilter(search, ["houseName", "description"]);
+  if (searchFilter) Object.assign(filter, searchFilter);
+
+  const pagination = getPagination(req);
+
+  const { data: houses, pagination: paginationInfo } = await paginateQuery(
+    House,
+    filter,
+    pagination,
+    { sort: { houseName: 1 } }
+  );
+
+  return sendResponse(res, 200, "Houses fetched successfully", { houses, pagination: paginationInfo });
+});
 
 // Get Single House
-const getHouseById = async (req, res) => {
-  try {
-    const house = await House.findById(req.params.id);
+const getHouseById = asyncHandler(async (req, res) => {
+  const house = await House.findById(req.params.id);
 
-    if (!house) {
-      return res.status(404).json({
-        success: false,
-        message: "House not found",
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      house,
-    });
-  } catch (error) {
-    if (error.name === "CastError") {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid house ID",
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+  if (!house) {
+    throw new ApiError(404, "House not found");
   }
-};
+
+  return sendResponse(res, 200, "House fetched successfully", { house });
+});
 
 // Update House
-const updateHouse = async (req, res) => {
-  try {
-    const { houseName, description, active } = req.body;
+const updateHouse = asyncHandler(async (req, res) => {
+  const { houseName, description, active } = req.body;
 
-    const house = await House.findById(req.params.id);
-
-    if (!house) {
-      return res.status(404).json({
-        success: false,
-        message: "House not found",
-      });
-    }
-
-    if (houseName && houseName.trim() !== house.houseName) {
-      const existing = await House.findOne({
-        houseName: houseName.trim(),
-        _id: { $ne: house._id },
-      });
-
-      if (existing) {
-        return res.status(409).json({
-          success: false,
-          message: "House name already exists",
-        });
-      }
-
-      house.houseName = houseName.trim();
-    }
-
-    if (description !== undefined)
-      house.description = description;
-
-    if (active !== undefined)
-      house.active = active;
-
-    await house.save();
-
-    return res.status(200).json({
-      success: true,
-      message: "House updated successfully",
-      house,
-    });
-  } catch (error) {
-    if (error.name === "CastError") {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid house ID",
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+  const house = await House.findById(req.params.id);
+  if (!house) {
+    throw new ApiError(404, "House not found");
   }
-};
+
+  if (houseName && houseName !== house.houseName) {
+    await checkDuplicate(House, { houseName }, "House name already exists", house._id);
+    house.houseName = houseName;
+  }
+
+  if (description !== undefined) house.description = description;
+  if (active !== undefined) house.active = active;
+
+  await house.save();
+
+  return sendResponse(res, 200, "House updated successfully", { house });
+});
 
 // Delete House
-const deleteHouse = async (req, res) => {
-  try {
-    const house = await House.findByIdAndDelete(req.params.id);
+const deleteHouse = asyncHandler(async (req, res) => {
+  const house = await House.findById(req.params.id);
 
-    if (!house) {
-      return res.status(404).json({
-        success: false,
-        message: "House not found",
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "House deleted successfully",
-    });
-  } catch (error) {
-    if (error.name === "CastError") {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid house ID",
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+  if (!house) {
+    throw new ApiError(404, "House not found");
   }
-};
+
+  const studentsWithHouse = await Student.countDocuments({ "academic.house": house._id });
+  if (studentsWithHouse > 0) {
+    throw new ApiError(400, `Cannot delete house — ${studentsWithHouse} student(s) are currently assigned to it`);
+  }
+
+  await house.deleteOne();
+
+  return sendResponse(res, 200, "House deleted successfully");
+});
 
 module.exports = {
   createHouse,

@@ -1,197 +1,104 @@
 const Category = require("../models/categoryModel");
+const Student = require("../models/studentModel");
+const asyncHandler = require("../utils/asyncHandler");
+const ApiError = require("../utils/ApiError");
+const sendResponse = require("../utils/ApiResponse");
+const checkDuplicate = require("../utils/checkDuplicate");
+const buildSearchFilter = require("../utils/buildSearchFilter");
+const { getPagination, paginateQuery } = require("../utils/paginate");
 
 // Create Category
-const createCategory = async (req, res) => {
-  try {
-    const { categoryName, categoryCode, description, active } = req.body;
+const createCategory = asyncHandler(async (req, res) => {
+  const { categoryName, categoryCode, description, active } = req.body;
 
-    if (!categoryName || !categoryName.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: "Category name is required",
-      });
-    }
+  await checkDuplicate(Category, { categoryName }, "Category already exists");
 
-    const existing = await Category.findOne({
-      categoryName: categoryName.trim(),
-    });
+  const category = await Category.create({
+    categoryName,
+    categoryCode,
+    description,
+    active,
+  });
 
-    if (existing) {
-      return res.status(409).json({
-        success: false,
-        message: "Category already exists",
-      });
-    }
-
-    const category = await Category.create({
-      categoryName: categoryName.trim(),
-      categoryCode,
-      description,
-      active,
-    });
-
-    return res.status(201).json({
-      success: true,
-      message: "Category created successfully",
-      category,
-    });
-  } catch (error) {
-    if (error.code === 11000) {
-      return res.status(409).json({
-        success: false,
-        message: "Category already exists",
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
+  return sendResponse(res, 201, "Category created successfully", { category });
+});
 
 // Get All Categories
-const getAllCategories = async (req, res) => {
-  try {
-    const categories = await Category.find().sort({ categoryName: 1 });
+const getAllCategories = asyncHandler(async (req, res) => {
+  const { search, active } = req.query;
 
-    return res.status(200).json({
-      success: true,
-      categories,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
+  const filter = {};
+  if (active !== undefined) filter.active = active === "true";
+
+  const searchFilter = buildSearchFilter(search, ["categoryName", "categoryCode", "description"]);
+  if (searchFilter) Object.assign(filter, searchFilter);
+
+  const pagination = getPagination(req);
+
+  const { data: categories, pagination: paginationInfo } = await paginateQuery(
+    Category,
+    filter,
+    pagination,
+    { sort: { categoryName: 1 } }
+  );
+
+  return sendResponse(res, 200, "Categories fetched successfully", { categories, pagination: paginationInfo });
+});
 
 // Get Category By Id
-const getCategoryById = async (req, res) => {
-  try {
-    const category = await Category.findById(req.params.id);
+const getCategoryById = asyncHandler(async (req, res) => {
+  const category = await Category.findById(req.params.id);
 
-    if (!category) {
-      return res.status(404).json({
-        success: false,
-        message: "Category not found",
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      category,
-    });
-  } catch (error) {
-    if (error.name === "CastError") {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid category ID",
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+  if (!category) {
+    throw new ApiError(404, "Category not found");
   }
-};
+
+  return sendResponse(res, 200, "Category fetched successfully", { category });
+});
 
 // Update Category
-const updateCategory = async (req, res) => {
-  try {
-    const { categoryName, categoryCode, description, active } = req.body;
+const updateCategory = asyncHandler(async (req, res) => {
+  const { categoryName, categoryCode, description, active } = req.body;
 
-    const category = await Category.findById(req.params.id);
-
-    if (!category) {
-      return res.status(404).json({
-        success: false,
-        message: "Category not found",
-      });
-    }
-
-    if (
-      categoryName &&
-      categoryName.trim() !== category.categoryName
-    ) {
-      const existing = await Category.findOne({
-        categoryName: categoryName.trim(),
-        _id: { $ne: category._id },
-      });
-
-      if (existing) {
-        return res.status(409).json({
-          success: false,
-          message: "Category name already exists",
-        });
-      }
-
-      category.categoryName = categoryName.trim();
-    }
-
-    if (categoryCode !== undefined)
-      category.categoryCode = categoryCode;
-
-    if (description !== undefined)
-      category.description = description;
-
-    if (active !== undefined)
-      category.active = active;
-
-    await category.save();
-
-    return res.status(200).json({
-      success: true,
-      message: "Category updated successfully",
-      category,
-    });
-  } catch (error) {
-    if (error.name === "CastError") {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid category ID",
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+  const category = await Category.findById(req.params.id);
+  if (!category) {
+    throw new ApiError(404, "Category not found");
   }
-};
+
+  if (categoryName && categoryName !== category.categoryName) {
+    await checkDuplicate(Category, { categoryName }, "Category name already exists", category._id);
+    category.categoryName = categoryName;
+  }
+
+  if (categoryCode !== undefined) category.categoryCode = categoryCode;
+  if (description !== undefined) category.description = description;
+  if (active !== undefined) category.active = active;
+
+  await category.save();
+
+  return sendResponse(res, 200, "Category updated successfully", { category });
+});
 
 // Delete Category
-const deleteCategory = async (req, res) => {
-  try {
-    const category = await Category.findByIdAndDelete(req.params.id);
+const deleteCategory = asyncHandler(async (req, res) => {
+  const category = await Category.findById(req.params.id);
 
-    if (!category) {
-      return res.status(404).json({
-        success: false,
-        message: "Category not found",
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "Category deleted successfully",
-    });
-  } catch (error) {
-    if (error.name === "CastError") {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid category ID",
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+  if (!category) {
+    throw new ApiError(404, "Category not found");
   }
-};
+
+  const studentsWithCategory = await Student.countDocuments({
+    "personal.category": category._id,
+  });
+
+  if (studentsWithCategory > 0) {
+    throw new ApiError(400, `Cannot delete category — ${studentsWithCategory} student(s) are currently assigned to it`);
+  }
+
+  await category.deleteOne();
+
+  return sendResponse(res, 200, "Category deleted successfully");
+});
 
 module.exports = {
   createCategory,

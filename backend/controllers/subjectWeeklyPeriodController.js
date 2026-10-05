@@ -1,407 +1,158 @@
 const SubjectWeeklyPeriod = require("../models/subjectWeeklyPeriodModel");
+const asyncHandler = require("../utils/asyncHandler");
+const ApiError = require("../utils/ApiError");
+const sendResponse = require("../utils/ApiResponse");
+const checkDuplicate = require("../utils/checkDuplicate");
+const { getPagination, paginateQuery } = require("../utils/paginate");
 
 const populateFields = [
-  {
-    path: "academicYear",
-    select: "name",
-  },
-  {
-    path: "class",
-    select: "className",
-  },
-  {
-    path: "section",
-    select: "sectionName",
-  },
-  {
-    path: "subject",
-    select: "subjectName",
-  },
+  { path: "academicYear", select: "name" },
+  { path: "class", select: "className" },
+  { path: "section", select: "sectionName" },
+  { path: "subject", select: "subjectName" },
 ];
 
-// =====================================================
+const DUPLICATE_MESSAGE = "Weekly period setting already exists for this subject and section";
+
 // CREATE
-// =====================================================
+const createSubjectWeeklyPeriod = asyncHandler(async (req, res) => {
+  const { academicYear, class: classId, section, subject, periodsPerWeek } = req.body;
 
-const createSubjectWeeklyPeriod = async (req, res) => {
-  try {
-    const {
-      academicYear,
-      class: classId,
-      section,
-      subject,
-      periodsPerWeek,
-    } = req.body;
+  await checkDuplicate(
+    SubjectWeeklyPeriod,
+    { academicYear, class: classId, section, subject },
+    DUPLICATE_MESSAGE
+  );
 
-    if (
-      !academicYear ||
-      !classId ||
-      !section ||
-      !subject ||
-      periodsPerWeek === undefined
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Academic year, class, section, subject and periods per week are required",
-      });
-    }
+  const weeklyPeriod = await SubjectWeeklyPeriod.create({
+    academicYear,
+    class: classId,
+    section,
+    subject,
+    periodsPerWeek,
+  });
 
-    if (
-      !Number.isInteger(Number(periodsPerWeek)) ||
-      Number(periodsPerWeek) < 1
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Periods per week must be a whole number greater than 0",
-      });
-    }
+  const populated = await weeklyPeriod.populate(populateFields);
 
-    const existing = await SubjectWeeklyPeriod.findOne({
-      academicYear,
-      class: classId,
-      section,
-      subject,
-    });
+  return sendResponse(res, 201, "Subject weekly period created successfully", {
+    subjectWeeklyPeriod: populated,
+  });
+});
 
-    if (existing) {
-      return res.status(409).json({
-        success: false,
-        message:
-          "Weekly period setting already exists for this subject and section",
-      });
-    }
-
-    const weeklyPeriod = await SubjectWeeklyPeriod.create({
-      academicYear,
-      class: classId,
-      section,
-      subject,
-      periodsPerWeek: Number(periodsPerWeek),
-    });
-
-    const populated = await weeklyPeriod.populate(populateFields);
-
-    return res.status(201).json({
-      success: true,
-      message: "Subject weekly period created successfully",
-      subjectWeeklyPeriod: populated,
-    });
-  } catch (error) {
-    if (error.code === 11000) {
-      return res.status(409).json({
-        success: false,
-        message:
-          "Weekly period setting already exists for this subject and section",
-      });
-    }
-
-    if (error.name === "ValidationError") {
-      const firstError = Object.values(error.errors)[0]?.message;
-
-      return res.status(400).json({
-        success: false,
-        message: firstError || "Invalid subject weekly period data",
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
-
-// =====================================================
 // GET ALL
-// =====================================================
+const getAllSubjectWeeklyPeriods = asyncHandler(async (req, res) => {
+  const { class: classId, academicYear, section, subject, active } = req.query;
 
-const getAllSubjectWeeklyPeriods = async (req, res) => {
-  try {
-    const subjectWeeklyPeriods =
-      await SubjectWeeklyPeriod.find()
-        .populate(populateFields)
-        .sort({
-          createdAt: -1,
-        });
+  const filter = {};
+  if (classId) filter.class = classId;
+  if (academicYear) filter.academicYear = academicYear;
+  if (section) filter.section = section;
+  if (subject) filter.subject = subject;
+  if (active !== undefined) filter.active = active === "true";
 
-    return res.status(200).json({
-      success: true,
-      subjectWeeklyPeriods,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
+  const pagination = getPagination(req);
 
-// =====================================================
+  const { data: subjectWeeklyPeriods, pagination: paginationInfo } = await paginateQuery(
+    SubjectWeeklyPeriod,
+    filter,
+    pagination,
+    { populate: populateFields, sort: { createdAt: -1 } }
+  );
+
+  return sendResponse(res, 200, "Subject weekly periods fetched successfully", {
+    subjectWeeklyPeriods,
+    pagination: paginationInfo,
+  });
+});
+
 // GET BY ID
-// =====================================================
+const getSubjectWeeklyPeriodById = asyncHandler(async (req, res) => {
+  const subjectWeeklyPeriod = await SubjectWeeklyPeriod.findById(req.params.id).populate(
+    populateFields
+  );
 
-const getSubjectWeeklyPeriodById = async (req, res) => {
-  try {
-    const subjectWeeklyPeriod =
-      await SubjectWeeklyPeriod.findById(
-        req.params.id
-      ).populate(populateFields);
-
-    if (!subjectWeeklyPeriod) {
-      return res.status(404).json({
-        success: false,
-        message: "Subject weekly period not found",
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      subjectWeeklyPeriod,
-    });
-  } catch (error) {
-    if (error.name === "CastError") {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid subject weekly period ID",
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+  if (!subjectWeeklyPeriod) {
+    throw new ApiError(404, "Subject weekly period not found");
   }
-};
 
-// =====================================================
+  return sendResponse(res, 200, "Subject weekly period fetched successfully", {
+    subjectWeeklyPeriod,
+  });
+});
+
 // GET BY CLASS + SECTION
-// =====================================================
+const getSubjectWeeklyPeriodsBySection = asyncHandler(async (req, res) => {
+  const { academicYear, class: classId, section } = req.query;
 
-const getSubjectWeeklyPeriodsBySection = async (req, res) => {
-  try {
-    const {
-      academicYear,
-      class: classId,
-      section,
-    } = req.query;
+  const subjectWeeklyPeriods = await SubjectWeeklyPeriod.find({
+    academicYear,
+    class: classId,
+    section,
+    active: true,
+  })
+    .populate(populateFields)
+    .sort({ subject: 1 });
 
-    if (!academicYear || !classId || !section) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Academic year, class and section are required",
-      });
-    }
+  return sendResponse(res, 200, "Subject weekly periods fetched successfully", {
+    subjectWeeklyPeriods,
+  });
+});
 
-    const subjectWeeklyPeriods =
-      await SubjectWeeklyPeriod.find({
-        academicYear,
-        class: classId,
-        section,
-        active: true,
-      })
-        .populate(populateFields)
-        .sort({
-          subject: 1,
-        });
-
-    return res.status(200).json({
-      success: true,
-      subjectWeeklyPeriods,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
-
-// =====================================================
 // UPDATE
-// =====================================================
+const updateSubjectWeeklyPeriod = asyncHandler(async (req, res) => {
+  const { academicYear, class: classId, section, subject, periodsPerWeek, active } = req.body;
 
-const updateSubjectWeeklyPeriod = async (req, res) => {
-  try {
-    const {
-      academicYear,
-      class: classId,
-      section,
-      subject,
-      periodsPerWeek,
-      active,
-    } = req.body;
-
-    const weeklyPeriod =
-      await SubjectWeeklyPeriod.findById(
-        req.params.id
-      );
-
-    if (!weeklyPeriod) {
-      return res.status(404).json({
-        success: false,
-        message: "Subject weekly period not found",
-      });
-    }
-
-    if (
-      periodsPerWeek !== undefined &&
-      (!Number.isInteger(Number(periodsPerWeek)) ||
-        Number(periodsPerWeek) < 1)
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Periods per week must be a whole number greater than 0",
-      });
-    }
-
-    const newYear =
-      academicYear ?? weeklyPeriod.academicYear;
-
-    const newClass =
-      classId ?? weeklyPeriod.class;
-
-    const newSection =
-      section ?? weeklyPeriod.section;
-
-    const newSubject =
-      subject ?? weeklyPeriod.subject;
-
-    const isChangingUniqueFields =
-      String(newYear) !==
-        String(weeklyPeriod.academicYear) ||
-      String(newClass) !==
-        String(weeklyPeriod.class) ||
-      String(newSection) !==
-        String(weeklyPeriod.section) ||
-      String(newSubject) !==
-        String(weeklyPeriod.subject);
-
-    if (isChangingUniqueFields) {
-      const existing =
-        await SubjectWeeklyPeriod.findOne({
-          _id: {
-            $ne: weeklyPeriod._id,
-          },
-          academicYear: newYear,
-          class: newClass,
-          section: newSection,
-          subject: newSubject,
-        });
-
-      if (existing) {
-        return res.status(409).json({
-          success: false,
-          message:
-            "Weekly period setting already exists for this subject and section",
-        });
-      }
-    }
-
-    if (academicYear !== undefined) {
-      weeklyPeriod.academicYear =
-        academicYear;
-    }
-
-    if (classId !== undefined) {
-      weeklyPeriod.class = classId;
-    }
-
-    if (section !== undefined) {
-      weeklyPeriod.section = section;
-    }
-
-    if (subject !== undefined) {
-      weeklyPeriod.subject = subject;
-    }
-
-    if (periodsPerWeek !== undefined) {
-      weeklyPeriod.periodsPerWeek =
-        Number(periodsPerWeek);
-    }
-
-    if (active !== undefined) {
-      weeklyPeriod.active = active;
-    }
-
-    await weeklyPeriod.save();
-
-    const populated =
-      await weeklyPeriod.populate(
-        populateFields
-      );
-
-    return res.status(200).json({
-      success: true,
-      message:
-        "Subject weekly period updated successfully",
-      subjectWeeklyPeriod: populated,
-    });
-  } catch (error) {
-    if (error.name === "CastError") {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Invalid subject weekly period ID",
-      });
-    }
-
-    if (error.code === 11000) {
-      return res.status(409).json({
-        success: false,
-        message:
-          "Weekly period setting already exists for this subject and section",
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+  const weeklyPeriod = await SubjectWeeklyPeriod.findById(req.params.id);
+  if (!weeklyPeriod) {
+    throw new ApiError(404, "Subject weekly period not found");
   }
-};
 
-// =====================================================
+  const newYear = academicYear ?? weeklyPeriod.academicYear;
+  const newClass = classId ?? weeklyPeriod.class;
+  const newSection = section ?? weeklyPeriod.section;
+  const newSubject = subject ?? weeklyPeriod.subject;
+
+  const isChangingUniqueFields =
+    String(newYear) !== String(weeklyPeriod.academicYear) ||
+    String(newClass) !== String(weeklyPeriod.class) ||
+    String(newSection) !== String(weeklyPeriod.section) ||
+    String(newSubject) !== String(weeklyPeriod.subject);
+
+  if (isChangingUniqueFields) {
+    await checkDuplicate(
+      SubjectWeeklyPeriod,
+      { academicYear: newYear, class: newClass, section: newSection, subject: newSubject },
+      DUPLICATE_MESSAGE,
+      weeklyPeriod._id
+    );
+  }
+
+  if (academicYear !== undefined) weeklyPeriod.academicYear = academicYear;
+  if (classId !== undefined) weeklyPeriod.class = classId;
+  if (section !== undefined) weeklyPeriod.section = section;
+  if (subject !== undefined) weeklyPeriod.subject = subject;
+  if (periodsPerWeek !== undefined) weeklyPeriod.periodsPerWeek = periodsPerWeek;
+  if (active !== undefined) weeklyPeriod.active = active;
+
+  await weeklyPeriod.save();
+
+  const populated = await weeklyPeriod.populate(populateFields);
+
+  return sendResponse(res, 200, "Subject weekly period updated successfully", {
+    subjectWeeklyPeriod: populated,
+  });
+});
+
 // DELETE
-// =====================================================
+const deleteSubjectWeeklyPeriod = asyncHandler(async (req, res) => {
+  const deleted = await SubjectWeeklyPeriod.findByIdAndDelete(req.params.id);
 
-const deleteSubjectWeeklyPeriod = async (req, res) => {
-  try {
-    const deleted =
-      await SubjectWeeklyPeriod.findByIdAndDelete(
-        req.params.id
-      );
-
-    if (!deleted) {
-      return res.status(404).json({
-        success: false,
-        message:
-          "Subject weekly period not found",
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message:
-        "Subject weekly period removed successfully",
-    });
-  } catch (error) {
-    if (error.name === "CastError") {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Invalid subject weekly period ID",
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+  if (!deleted) {
+    throw new ApiError(404, "Subject weekly period not found");
   }
-};
+
+  return sendResponse(res, 200, "Subject weekly period removed successfully");
+});
 
 module.exports = {
   createSubjectWeeklyPeriod,

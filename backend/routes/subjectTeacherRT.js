@@ -2,6 +2,13 @@ const express = require("express");
 const router = express.Router();
 const { protect } = require("../middleware/authMiddleware");
 const { authorize } = require("../middleware/roleMiddleware");
+const { validate } = require("../middleware/validationMiddleware");
+
+const {
+  createSubjectTeacherSchema,
+  updateSubjectTeacherSchema,
+  idParamSchema,
+} = require("../validators/subjectTeacherValidator");
 
 const {
   createSubjectTeacher,
@@ -13,10 +20,35 @@ const {
 
 router.use(protect);
 
-router.post("/create", authorize("Super Admin", "Admin"), createSubjectTeacher);
+router.post(
+  "/create",
+  authorize("Super Admin", "Admin"),
+  validate(createSubjectTeacherSchema, "body"),
+  createSubjectTeacher,
+);
+
 router.get("/list", authorize("Super Admin", "Admin"), getAllSubjectTeachers);
-router.get("/details/:id", authorize("Super Admin", "Admin"), getSubjectTeacherById);
-router.put("/update/:id", authorize("Super Admin", "Admin"), updateSubjectTeacher);
-router.delete("/delete/:id", authorize("Super Admin", "Admin"), deleteSubjectTeacher);
+
+router.get(
+  "/details/:id",
+  authorize("Super Admin", "Admin"),
+  validate(idParamSchema, "params"),
+  getSubjectTeacherById,
+);
+
+router.put(
+  "/update/:id",
+  authorize("Super Admin", "Admin"),
+  validate(idParamSchema, "params"),
+  validate(updateSubjectTeacherSchema, "body"),
+  updateSubjectTeacher,
+);
+
+router.delete(
+  "/delete/:id",
+  authorize("Super Admin", "Admin"),
+  validate(idParamSchema, "params"),
+  deleteSubjectTeacher,
+);
 
 module.exports = router;

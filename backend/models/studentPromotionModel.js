@@ -18,4 +18,4 @@ const studentPromotionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("StudentPromotion", studentPromotionSchema);
+module.exports = mongoose.model("StudentPromotion", studentPromotionSchema);7
