@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Navbar as BSNavbar, Container, Dropdown, Badge } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import { logoutUser } from "../../services/authService";
 import { logout } from "../../redux/auth/authSlice";
 
 import MenuIcon from "@mui/icons-material/Menu";
@@ -22,10 +23,11 @@ export default function Navbar({ onMenuClick, drawerWidth }) {
     { id: 3, text: "Staff meeting scheduled for tomorrow" },
   ];
 
-  const handleLogout = () => {
-    dispatch(logout());
-    navigate("/");
-  };
+ const handleLogout = async () => {
+  await logoutUser();      // server revokes the refresh token and clears the cookie
+  dispatch(logout());      // clears Redux + localStorage
+  navigate("/");
+};
 
   return (
     <BSNavbar

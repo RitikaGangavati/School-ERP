@@ -1,12 +1,13 @@
 const express = require('express');
 const app = express();
 require('dotenv').config();
-const connectDB = require('./db/connect');
 const cors = require('cors');
-const path = require("path"); 
+const path = require("path");
+const cookieParser = require("cookie-parser");
 
-// database connect
-connectDB();
+// Swagger docs 
+const { mountSwagger } = require("./docs/swagger");
+mountSwagger(app);
 
 //connect helmet
 const helmet = require("helmet");
@@ -17,8 +18,18 @@ app.use(
   })
 );
 
-//Middleware
-app.use(cors());
+app.set("trust proxy", 1);
+
+const clientUrl = (process.env.CLIENT_URL || "http://localhost:5173").replace(/\/+$/, "");
+console.log("CORS origin:", clientUrl);
+
+app.use(
+  cors({
+    origin: clientUrl,
+    credentials: true,
+  })
+);
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({extended:true}));
 
@@ -85,10 +96,4 @@ app.use((req, res, next) => {
 const { errorHandler } = require("./middleware/errorMiddleware");
 app.use(errorHandler);
 
-// Server
-const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-    console.log(`Server running on ${PORT}`);
-});
-
+module.exports = app;

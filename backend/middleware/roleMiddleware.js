@@ -1,5 +1,5 @@
 const authorize = (...allowedRoles) => {
-  return (req, res, next) => {
+  const middleware = (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
@@ -25,6 +25,10 @@ const authorize = (...allowedRoles) => {
 
     next();
   };
+
+  // Metadata read by the Swagger generator (docs/swagger.js)
+  middleware.roles = allowedRoles;
+  return middleware;
 };
 
 module.exports = {

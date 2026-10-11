@@ -5,3 +5,4 @@ export const getImageUrl = (path) => {
   if (path.startsWith("http")) return path; // Cloudinary URL, use as-is
   return `${BASE_URL}${path}`;              // old local /uploads/... path
 };
+ 

@@ -24,4 +24,4 @@ const uploadBuffer = (file, folder, kind) =>
       .end(file.buffer);
   });
 
-module.exports = uploadToCloudinary = uploadBuffer;
+module.exports = uploadBuffer;

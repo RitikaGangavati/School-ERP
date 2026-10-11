@@ -1,5 +1,10 @@
-import api from "../utils/axios";
+import { loginRequest, logoutRequest } from "../utils/axios";
 
-export const loginUser = (data) => {
-    return api.post("/api/auth/login", data);
+// Returns { data } like before, so the login page keeps working unchanged
+export const loginUser = async (data) => {
+  const body = await loginRequest(data.email, data.password);
+  return { data: body };
 };
+
+// Tells the server to revoke the refresh token and clear the cookie
+export const logoutUser = () => logoutRequest();

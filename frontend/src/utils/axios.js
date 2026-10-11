@@ -1,35 +1,22 @@
-import axios from "axios";
+import { createSession } from "./session";
 
-const api = axios.create({
-    baseURL: "http://localhost:5000",
-    headers: {
-        "Content-Type": "application/json"
-    }
+// Same storage keys your authSlice and ProtectedRoute already use
+const session = createSession({
+  baseURL: "http://localhost:5000", // your server (no /api here, your services add it)
+  authPrefix: "/api/auth",
+  tokenStorage: {
+    get: () => localStorage.getItem("token"),
+    set: (token) => (token ? localStorage.setItem("token", token) : localStorage.removeItem("token")),
+  },
 });
 
-// Attach token to every outgoing request, if present
-api.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem("token");
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-    },
-    (error) => Promise.reject(error)
-);
+// For login/logout only. These skip the refresh interceptor on purpose.
+export const loginRequest = session.login;
+export const logoutRequest = session.logout;
 
-// Auto-logout if backend says the token is invalid/expired
-api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        if (error.response?.status === 401) {
-            localStorage.removeItem("token");
-            localStorage.removeItem("user");
-            window.location.href = "/";
-        }
-        return Promise.reject(error);
-    }
-);
+// Used by store.js to keep Redux in sync with silent refreshes
+export const onSessionChange = session.onSessionChange;
+export const getToken = session.getToken;
 
-export default api;
+// Use this for every other API call (adds the token, refreshes on 401, retries)
+export default session.api;

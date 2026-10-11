@@ -52,6 +52,18 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+     // Hashed refresh tokens, one per logged-in device (max 5)
+    refreshTokens: {
+      type: [
+        {
+          tokenHash: { type: String, required: true },
+          expiresAt: { type: Date, required: true },
+          _id: false,
+        },
+      ],
+      default: [],
+      select: false, // never returned in normal queries
+    },
   },
   {
     timestamps: true,

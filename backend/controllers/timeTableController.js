@@ -1,4 +1,4 @@
-const Timetable = require("../models/timetableModel");
+const Timetable = require("../models/timeTableModel");
 const SubjectTeacher = require("../models/subjectTeacherModel");
 const SubjectWeeklyPeriod = require("../models/subjectWeeklyPeriodModel");
 const TimeSlot = require("../models/timeSlotModel");

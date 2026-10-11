@@ -29,6 +29,16 @@ const authSlice = createSlice({
       localStorage.setItem("user", JSON.stringify(action.payload.user));
     },
 
+    // A silent refresh got a new access token
+    tokenRefreshed: (state, action) => {
+      state.user = action.payload.user;
+      state.token = action.payload.token;
+      state.isAuthenticated = true;
+
+      localStorage.setItem("token", action.payload.token);
+      localStorage.setItem("user", JSON.stringify(action.payload.user));
+    },
+
     logout: (state) => {
       state.user = null;
       state.token = null;
@@ -40,5 +50,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { loginSuccess, logout } = authSlice.actions;
+export const { loginSuccess, tokenRefreshed, logout } = authSlice.actions;
 export default authSlice.reducer;
